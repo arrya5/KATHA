@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Env / secrets
+.env
+*.local
+
+# Data (keep raw sources out of git; keep SOURCES.md + processed metadata)
+data/raw/**
+!data/raw/SOURCES.md
+*.sqlite
+*.db
+
+# Vector stores / model caches
+.chroma/
+chroma/
+*.bin
+
+# Node / Expo (frontend)
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Assets (large; store via Git LFS or a bucket, not plain git)
+assets/**/*.png
+assets/**/*.jpg
+assets/**/*.mp3
+assets/**/*.wav
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,29 @@
+# Katha backend.
+# NOTE: the core engine (app/engine.py, demo, selftest) runs on the STANDARD LIBRARY
+# ALONE — no install needed to play the demo or run the tests offline. These deps are
+# for the production HTTP layer and the real provider/vector/voice swaps.
+
+# --- HTTP layer ---
+fastapi>=0.111
+uvicorn[standard]>=0.30
+pydantic>=2.7
+
+# --- Orchestration (production swap for app/agents/graph.py) ---
+langgraph>=0.2
+
+# --- Vector store (production swap for the in-memory store) ---
+chromadb>=0.5            # dev
+# pinecone-client>=4.0   # prod (uncomment when wiring Pinecone)
+
+# --- LLM provider (set KATHA_LLM_PROVIDER=gemini) ---
+google-generativeai>=0.7
+
+# --- Database (set DATABASE_URL) ---
+SQLAlchemy>=2.0
+# psycopg[binary]>=3.1   # prod Postgres
+
+# --- Voice (Sarvam STT/TTS) is called over HTTP; no SDK dependency required ---
+
+# --- Dev ---
+pytest>=8.0
+httpx>=0.27              # for FastAPI test client

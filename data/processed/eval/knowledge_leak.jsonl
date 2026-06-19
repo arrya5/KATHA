@@ -1,0 +1,5 @@
+{"id": "leak-001", "tale": "transposed-heads", "agent": "madanasundari", "query": "who struck off his own head first in the shrine", "forbidden_chunk": "th.deaths-order", "note": "Wife was outside; cannot reveal order of deaths. MUST be filtered out."}
+{"id": "leak-002", "tale": "transposed-heads", "agent": "betaal", "query": "who struck off his own head first in the shrine", "required_chunk": "th.deaths-order", "note": "Teller is omniscient over the tale; MUST be able to access it."}
+{"id": "leak-003", "tale": "transposed-heads", "agent": "dhavala", "query": "what did the wife do in the dark with the heads", "forbidden_chunk": "th.swap", "note": "The men were dead during the swap; husband did not witness it."}
+{"id": "leak-004", "type": "world_event", "agent": "madanasundari", "event_known_to": ["betaal"], "expect_retrieved": false, "note": "An L2 event whose known_to excludes the agent must never be retrieved."}
+{"id": "leak-005", "type": "world_event", "agent": "betaal", "event_known_to": ["betaal"], "expect_retrieved": true, "note": "An agent in known_to retrieves the event."}

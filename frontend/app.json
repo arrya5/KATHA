@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Katha",
+    "slug": "katha",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#05060f",
+    "splash": { "backgroundColor": "#05060f", "resizeMode": "contain" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true },
+    "android": {
+      "package": "com.katha.app",
+      "adaptiveIcon": { "backgroundColor": "#0b1026" }
+    },
+    "web": { "bundler": "metro" }
+  }
+}

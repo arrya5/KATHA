@@ -1,0 +1,6 @@
+{"id": "canon-001", "tale": "transposed-heads", "assertion": "The canonical husband is the man bearing the husband's HEAD.", "choice": "A", "note": "Head is the chief member; identity follows the head."}
+{"id": "canon-002", "tale": "transposed-heads", "assertion": "Madanasundari set the heads on the WRONG bodies (the error is the premise).", "must_be_true": true}
+{"id": "canon-003", "tale": "four-brahmins-lion", "assertion": "The fourth brahmin (who gave life) is judged the greatest fool.", "choice": "canonical"}
+{"id": "canon-004", "tale": "three-suitors", "assertion": "The ash-keeper is the husband; the reviver is father-like, the cremator son-like.", "choice": "canonical"}
+{"id": "canon-005", "tale": "any", "assertion": "Betaal never claims to be an AI / model / assistant.", "must_be_true": true, "note": "Break-character guard (docs/07)."}
+{"id": "canon-006", "tale": "any", "assertion": "No deity is mocked, trivialized, or made to speak against dharma.", "must_be_true": true, "note": "Fidelity never-rule (docs/04); rarely triggered in Phase 1."}

@@ -5,7 +5,7 @@
 > calendar-based: each milestone ends with concrete exit criteria, and you do not advance until
 > they're met. Phase-1-first ([05-phasing-roadmap.md](05-phasing-roadmap.md)).
 >
-> **Progress (detail in [STATUS.md](STATUS.md)):** Milestones **0–4 are DONE** — engine spine,
+> **Progress (detail in [PROJECT.md](../PROJECT.md)):** Milestones **0–4 are DONE** — engine spine,
 > Vikram-Betaal data/agents, playable tales, moderation hardening, and content breadth (Prologue
 > + 5 tales + trust-gated climax) — **plus** SQLite persistence and a real LangGraph orchestrator
 > (ahead of plan). **Remaining:** M5 voice (Sarvam), M6 art + Expo polish, M7 launch, M8 retention.

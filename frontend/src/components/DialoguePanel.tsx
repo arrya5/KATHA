@@ -35,8 +35,8 @@ export function DialoguePanel({
 }
 
 const styles = StyleSheet.create({
-  speaker: { color: theme.gold, fontSize: 13, letterSpacing: 3, marginBottom: 6 },
-  lineBox: { maxHeight: 180 },
-  line: { color: theme.text, fontSize: 18, lineHeight: 27 },
-  ambient: { color: theme.dim, fontStyle: "italic", fontSize: 12, marginTop: 6 },
+  speaker: { color: theme.gold, fontSize: 13, letterSpacing: 3, marginBottom: 8, fontFamily: theme.serif },
+  lineBox: { maxHeight: 230 },
+  line: { color: theme.text, fontSize: 20, lineHeight: 31, fontFamily: theme.serif },
+  ambient: { color: theme.dim, fontStyle: "italic", fontSize: 12.5, marginTop: 8, fontFamily: theme.serif },
 });

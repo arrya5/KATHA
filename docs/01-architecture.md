@@ -9,7 +9,7 @@
 > *shapes* with simpler free/local pieces: single-speaker Vikram aur Betaal; **real LangGraph** or
 > a stdlib runner; in-memory + **SQLite**; **Ollama** LLM + embeddings (lexical fallback). The
 > `TurnState` here is shown multi-NPC (`active_npc_ids`); the Phase-1 code uses a single-speaker
-> dataclass. For exactly what's built today, see **[STATUS.md](STATUS.md)**.
+> dataclass. For exactly what's built today, see **[PROJECT.md](../PROJECT.md)**.
 
 ---
 

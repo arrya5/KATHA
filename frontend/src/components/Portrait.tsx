@@ -14,7 +14,7 @@ export function Portrait({ speaker, expression }: { speaker: string; expression:
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", marginTop: 70 },
+  wrap: { alignItems: "center" },
   circle: {
     width: 140, height: 140, borderRadius: 70, alignItems: "center", justifyContent: "center",
     backgroundColor: theme.gold, borderWidth: 2, borderColor: "rgba(255,255,255,0.25)",

@@ -87,16 +87,81 @@ Production swap: ChromaDB/Pinecone (which bundle their own embeddings) behind th
 `vector_store` API. The knowledge-state **witnessed-only filter still applies**, so semantic
 retrieval is bounded the same way — no leaks.
 
-## Voice (hear Betaal speak)
+## Voice — hear Betaal speak (Sarvam Bulbul v3)
 
-The web client speaks the dialogue. **Free, no key:** flip the 🔊 toggle in the browser — it uses
-your browser's built-in speech, with per-character pitch/rate. **Production (Indian voices):**
-```bash
-SARVAM_API_KEY=... python -m app.webserver   # client now plays Sarvam Bulbul audio instead
+The web client speaks every character's dialogue. Two modes:
+
+### Free — browser speech (no setup)
+Flip the **🔊 Voice** toggle in the browser. Uses the browser's built-in `SpeechSynthesis`
+with per-character pitch/rate hints. Works offline, sounds generic.
+
+### Production — authentic Indian voices (Sarvam Bulbul v3)
+
+1. **Get a free API key** at [dashboard.sarvam.ai](https://dashboard.sarvam.ai)
+   (free credits on signup; no card required for development).
+
+2. **Set the key** — either in `backend/.env` (recommended):
+   ```
+   SARVAM_API_KEY=your_key_here
+   ```
+   or inline:
+   ```bash
+   SARVAM_API_KEY=your_key_here python -m app.webserver
+   ```
+
+3. **Start the server** and open the browser at `http://127.0.0.1:8000`.
+   The **🔊 Voice** toggle now shows **🔊 Sarvam** when active and plays real Indian voices.
+
+4. **Verify** it's working:
+   ```bash
+   # Check that tts_enabled is true
+   curl http://127.0.0.1:8000/season
+   # → {"order": [...], "tts_enabled": true}
+
+   # Synthesise a test line directly
+   curl -X POST http://127.0.0.1:8000/tts \
+     -H "Content-Type: application/json" \
+     -d '{"text": "Sunte hain, raja?", "voice_profile": "betaal_sonorous"}' | python -c "import json,sys; d=json.load(sys.stdin); print('OK, audio bytes:', len(d['audio'] or ''))"
+   ```
+
+### Per-character voice design (`app/voice/profiles.py`)
+
+Each character is mapped to a distinct [Bulbul v3](https://docs.sarvam.ai) speaker with tuned
+`pace` (speed) and `temperature` (expressiveness):
+
+| Character | Speaker | Why |
+|---|---|---|
+| **Betaal** | `kabir` | Deep, resonant, theatrical — sounds ancient and mischievous |
+| **Vikramaditya** | `rahul` | Measured, commanding — a just king |
+| **Narrator** | `aditya` | Clear, articulate — clean storytelling voice |
+| **Kshantishila** | `manan` | Smooth, persuasive — perfect oiliness for the mendicant |
+| **Grave female** (Madanasundari in grief) | `roopa` | Deep female, sorrowful |
+| **Soft female** (Madanasundari calm) | `priya` | Warm, gentle |
+| **Child** | `ashutosh` | Lightest male voice |
+| **Broken/grief** (Viravara) | `dev` | Strained, weighted |
+
+Betaal's pace is set to `0.82` (deliberately slow, dramatic) with `temperature: 1.3`
+(high expressiveness). Add or tune profiles in `profiles.py` — no code change elsewhere needed.
+
+### How the audio pipeline works
+
 ```
-Per-character voices in `app/voice/profiles.py`; Sarvam Bulbul provider in `app/voice/sarvam.py`
-(`/tts` endpoint, cached). No key → `/tts` returns null → client falls back to browser speech.
-Voice *input* (Sarvam Saarika STT) is the next voice step.
+/tts endpoint  →  sarvam.synthesize(text, profile, language)
+               →  POST api.sarvam.ai/text-to-speech
+                    body: {text, speaker, model:"bulbul:v3",
+                           target_language_code:"hi-IN",
+                           properties: {pace, temperature}}
+               →  base64 WAV  →  cached in _CACHE[text, profile, lang]
+               →  client: AudioContext.decodeAudioData → play
+```
+
+No key or failure → `/tts` returns `null` → client falls back to browser speech silently.
+TTS results are cached in-process (same line/profile/language = one API call ever).
+
+### STT (voice *input*) — next step
+Sarvam Saarika STT is architecturally wired in `config.py` (`sarvam_stt_url`). The
+`/stt` endpoint and frontend microphone capture are the next voice milestone.
+
 
 ## Persistence (progress survives restarts)
 

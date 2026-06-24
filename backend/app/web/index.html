@@ -74,7 +74,7 @@
     <span class="stat" id="hTrust">Trust 0</span>
     <span class="stat" id="hDharma">Dharma 0</span>
     <span class="grow"></span>
-    <span id="voice" title="Speak the dialogue (browser speech; Sarvam when a key is set)">🔇 Voice</span>
+    <span id="voice" title="Toggle voice — Sarvam AI (hi-IN) when key is set, browser speech otherwise">🔇 Voice</span>
   </div>
 
   <div id="portraitWrap"><div><img id="portimg" alt=""><div id="portrait">ॐ</div><div id="expr"></div></div></div>
@@ -101,7 +101,21 @@
 <script>
 const SID = "web-" + Math.random().toString(36).slice(2);
 let season = [], idx = 0, scene = "prologue", typing = null;
-let voiceOn = false, ttsEnabled = false, lastRender = null, curAudio = null;
+let voiceOn = false, ttsEnabled = false, lastRender = null;
+
+// Single shared AudioContext — never create more than one or old ones keep playing.
+let _actx = null;
+let _curSrc = null;   // the currently playing AudioBufferSourceNode
+let _ttsAbort = null; // AbortController for the in-flight /tts fetch
+
+function _getAudioContext(){
+  if(!_actx || _actx.state === 'closed'){
+    _actx = new (window.AudioContext||window.webkitAudioContext)();
+  }
+  // Resume if browser suspended it (autoplay policy)
+  if(_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
 
 // Browser-speech hints per voice_profile (free fallback when Sarvam isn't enabled).
 const VOICE = {
@@ -136,7 +150,11 @@ function typewriter(text){
 }
 
 function stopSpeech(){
-  if(curAudio){ curAudio.pause(); curAudio=null; }
+  // Cancel any in-flight Sarvam fetch so it can't play after we've moved on.
+  if(_ttsAbort){ _ttsAbort.abort(); _ttsAbort = null; }
+  // Stop the currently playing AudioBufferSourceNode.
+  if(_curSrc){ try{ _curSrc.stop(); }catch(e){} _curSrc = null; }
+  // Stop browser fallback speech.
   if(window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
@@ -147,14 +165,40 @@ function pickVoice(){
 
 async function speak(r){
   if(!voiceOn || !r || !r.line) return;
-  stopSpeech();
-  if(ttsEnabled){ // Sarvam (production)
+  stopSpeech(); // cancels previous fetch + stops previous audio before starting anything new
+  if(ttsEnabled){ // Sarvam Bulbul v3 (production Indian voices)
+    const abortCtrl = new AbortController();
+    _ttsAbort = abortCtrl;
     try{
-      const res = await fetch("/tts",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text:r.line, voice_profile:r.voice_profile})});
+      const res = await fetch("/tts",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:r.line, voice_profile:r.voice_profile, language:"hi-IN"}),
+        signal: abortCtrl.signal,   // cancelled by stopSpeech() if a newer turn starts
+      });
       const data = await res.json();
-      if(data.audio){ curAudio = new Audio("data:audio/wav;base64,"+data.audio); curAudio.play(); return; }
-    }catch(e){ /* fall through to browser speech */ }
+      if(data.audio){
+        // Decode base64 WAV and play through the single shared AudioContext.
+        const raw = atob(data.audio);
+        const buf = new Uint8Array(raw.length);
+        for(let i=0;i<raw.length;i++) buf[i]=raw.charCodeAt(i);
+        const actx = _getAudioContext();
+        const decoded = await actx.decodeAudioData(buf.buffer);
+        // Stop whatever is playing NOW (the fetch took time; something may have started).
+        if(_curSrc){ try{ _curSrc.stop(); }catch(e){} }
+        const src = actx.createBufferSource();
+        src.buffer = decoded;
+        src.connect(actx.destination);
+        src.start(0);
+        src.onended = () => { if(_curSrc === src) _curSrc = null; };
+        _curSrc = src;
+        _ttsAbort = null;
+        return;
+      }
+    }catch(e){
+      if(e.name === 'AbortError') return; // cancelled intentionally — don't fall through
+      console.warn("Sarvam TTS failed, falling back to browser speech:", e);
+    }
   }
   if(window.speechSynthesis){ // free browser fallback
     const u = new SpeechSynthesisUtterance(r.line.replace(/[*"]/g,""));
@@ -243,7 +287,11 @@ async function init(){
   $("nextBtn").onclick=nextScene;
   $("voice").onclick=()=>{
     voiceOn = !voiceOn;
-    $("voice").textContent = voiceOn ? "🔊 Voice" : "🔇 Voice";
+    const label = voiceOn ? (ttsEnabled ? "🔊 Sarvam" : "🔊 Browser") : "🔇 Voice";
+    $("voice").textContent = label;
+    $("voice").title = voiceOn
+      ? (ttsEnabled ? "Sarvam AI Bulbul v3 — Indian voices active" : "Browser speech active (set SARVAM_API_KEY for Indian voices)")
+      : "Voice off";
     if(voiceOn){ speak(lastRender); } else { stopSpeech(); }
   };
   turn("begin"); // opens on the prologue

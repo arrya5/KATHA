@@ -37,6 +37,8 @@ def _deserialize(sid: str, text: str) -> SessionState:
         scene=SceneRuntime(**d.get("scene", {})),
         events=[WorldEvent(**e) for e in d.get("events", [])],
         memories=[Memory(**m) for m in d.get("memories", [])],
+        last_render=d.get("last_render"),
+        language=d.get("language", "en"),
     )
 
 

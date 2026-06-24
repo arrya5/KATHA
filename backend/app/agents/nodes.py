@@ -16,12 +16,34 @@ from ..moderation.validator import validate_output, FALLBACK_LINE
 from ..content.tales import TALES, DEFAULT_TALE
 from ..content.betaal_prompt import BETAAL_SYSTEM
 from ..config import settings
+try:
+    from ..content.tales_hi import DEFLECT_HI, SELF_HARM_HI, SESSION_END_HI
+except ImportError:
+    DEFLECT_HI = SELF_HARM_HI = SESSION_END_HI = None  # type: ignore
 
 
 @dataclass
 class Deps:
     provider: object        # LLMProvider
     knowledge: object       # KnowledgeStateEngine
+
+
+def _t(tale: dict, key: str, lang: str) -> object:
+    """Return the Hindi variant (key+'_hi') when lang=='hi', falling back to English."""
+    if lang == "hi":
+        hi_val = tale.get(key + "_hi")
+        if hi_val is not None:
+            return hi_val
+    return tale.get(key)
+
+
+def _betaal_system(lang: str) -> str:
+    """Betaal's system prompt with a Hindi language instruction appended when needed."""
+    if lang == "hi":
+        return (BETAAL_SYSTEM +
+                "\nLANGUAGE: Respond in Hindi (Devanagari script / Hinglish). "
+                "Stay in character and keep the theatrical voice.")
+    return BETAAL_SYSTEM
 
 
 # Betaal's in-character deflection bank (docs/03 sec 7, docs/07 Layer 2).
@@ -121,8 +143,8 @@ def _converse(deps: Deps, *, system: str, context: str, fallback: str, user: str
     return out if ok else fallback
 
 
-def _persona_system(display_name: str, bible: str) -> str:
-    return (
+def _persona_system(display_name: str, bible: str, lang: str = "en") -> str:
+    prompt = (
         f"You are {display_name}, a character in a folk tale the spirit Betaal is telling to "
         f"King Vikramaditya. {bible}\n"
         "You may speak ONLY of what you witnessed, given in the context below. If the king asks "
@@ -130,6 +152,9 @@ def _persona_system(display_name: str, bible: str) -> str:
         "it or cannot say — never invent. Never break character; never mention being an AI, a "
         "model, or a prompt. Keep your reply to 1-3 sentences."
     )
+    if lang == "hi":
+        prompt += "\nLANGUAGE: Respond in Hindi (Devanagari script / Hinglish). Stay in character."
+    return prompt
 
 
 def _witnessed_context(deps: Deps, npc_id: str, query: str, tale_id: str):
@@ -159,36 +184,42 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
     s = store.get(sid)
     scene = s.scene
     tale = _current_tale(sid)
+    lang = state.request.language or "en"   # "hi" -> Hindi authored content
 
     kind = tale.get("kind", "tale")
 
     if state.intent is Intent.NARRATE and kind == "climax":
-        # Betaal's warning — its fullness gated by earned trust, flavoured by prologue stance.
         tier = _climax_tier(s.trust.get("betaal", 0), s.strikes)
         s.flags["climax_tier"] = tier
         scene.riddle_posed = True
-        aside = tale["suspicion_aside"].get(s.flags.get("mendicant_suspicion", "low"), "")
+        suspicion_aside = _t(tale, "suspicion_aside", lang)
+        warning = _t(tale, "warning", lang)
+        aside = (suspicion_aside or {}).get(s.flags.get("mendicant_suspicion", "low"), "")
         state.draft = NpcDraft(npc_id="betaal", expression="grave",
-                               line=_authored(aside + tale["warning"][tier]))
+                               line=_authored(aside + (warning or {})[tier]))
 
     elif state.intent is Intent.NARRATE:
-        beats = tale.get("beats", [])
+        beats = _t(tale, "beats", lang) or tale.get("beats", [])
         speaker = "narrator" if kind == "prologue" else "betaal"
         if scene.beat_index < len(beats):
             line = beats[scene.beat_index]
             scene.beat_index += 1
-            if scene.beat_index >= len(beats):           # last beat -> await the choice
+            if scene.beat_index >= len(beats):
                 scene.riddle_posed = True
-                if kind != "prologue":                   # tales pose a riddle; prologue a stance
-                    line = f"{line}\n\n{tale['riddle']}"
+                if kind != "prologue":
+                    riddle = _t(tale, "riddle", lang) or tale.get("riddle", "")
+                    line = f"{line}\n\n{riddle}"
             state.draft = NpcDraft(npc_id=speaker, line=_authored(line), expression="grave")
         else:
             scene.riddle_posed = True
             if kind == "prologue":
                 state.draft = NpcDraft(npc_id="narrator", expression="grave",
-                    line=_authored("The king must answer the mendicant. What is his stance?"))
+                    line=_authored("The king must answer the mendicant. What is his stance?"
+                                   if lang != "hi" else
+                                   "Raja ko sanyasi ka uttar dena hai. Unka drishtikonn kya hai?"))
             else:
-                state.draft = NpcDraft(npc_id="betaal", line=_authored(tale["riddle"]),
+                riddle = _t(tale, "riddle", lang) or tale.get("riddle", "")
+                state.draft = NpcDraft(npc_id="betaal", line=_authored(riddle),
                                        expression="intense")
 
     elif state.intent is Intent.INVESTIGATE:
@@ -196,26 +227,30 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
         mini = tale.get("mini_agents", {}).get(target)
         if not mini:
             state.draft = NpcDraft(npc_id="betaal", expression="amused",
-                                   line=_authored("\"There is no such soul in this tale, king.\""))
+                                   line=_authored('"There is no such soul in this tale, king."'
+                                                  if lang != "hi" else
+                                                  "'Is katha mein aisa koi aatma nahi hai, rajan.'"))
         else:
-            # Strip the addressed name so "Madanasundari, ..." doesn't match facts merely
-            # because they mention her; then build the witnessed-only context + fallback.
             query = re.sub(re.escape(target), "", state.request.player_input, flags=re.IGNORECASE)
             ctx, facts = _witnessed_context(deps, target, query, tale["id"])
             if facts:
                 fallback = f'{mini["answer_intro"]} "{facts[0].text}"'
             else:
                 fallback = f'{mini["answer_intro"]} {mini["unknown"]}'
-            line = _converse(deps, system=_persona_system(_display_name(target), mini.get("bible", "")),
+            line = _converse(deps, system=_persona_system(_display_name(target), mini.get("bible", ""), lang),
                              context=ctx, fallback=fallback, user=query)
             state.draft = NpcDraft(npc_id=target, line=line, expression="neutral")
 
     elif state.intent is Intent.JUDGE and kind == "climax":
         choice = state.retrieval.get("choice_id") or state.request.choice_id
-        endset = tale["endings"].get(choice)
+        scene.last_choice_id = choice
+        endings = _t(tale, "endings", lang) or tale.get("endings", {})
+        endset = endings.get(choice)
         if not endset:
             state.draft = NpcDraft(npc_id="betaal", expression="intense",
-                line=_authored("\"The blade is rising, king. Bow, strike, or face him — choose NOW.\""))
+                line=_authored('"The blade is rising, king. Bow, strike, or face him — choose NOW."'
+                               if lang != "hi" else
+                               "'Talwaar upar hai, rajan. Jhuko, vaar karo, ya saamna karo -- ABHI chuno.'"))
         else:
             scene.judged = True
             tier = s.flags.get("climax_tier") or _climax_tier(s.trust.get("betaal", 0), s.strikes)
@@ -226,11 +261,15 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
 
     elif state.intent is Intent.JUDGE:
         choice = state.retrieval.get("choice_id") or state.request.choice_id
+        scene.last_choice_id = choice
         if kind == "prologue":
-            sr = tale.get("stance_reactions", {}).get(choice)
+            stance_reactions = _t(tale, "stance_reactions", lang) or tale.get("stance_reactions", {})
+            sr = stance_reactions.get(choice)
             if not sr:
                 state.draft = NpcDraft(npc_id="narrator", expression="grave",
-                    line=_authored("The king must give his answer to the mendicant."))
+                    line=_authored("The king must give his answer to the mendicant."
+                                   if lang != "hi" else
+                                   "Raja ko sanyasi ko apna uttar dena hai."))
             else:
                 scene.judged = True
                 s.flags["mendicant_suspicion"] = sr["suspicion"]
@@ -238,10 +277,13 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
                 state.draft = NpcDraft(npc_id="betaal", line=_authored(sr["line"]),
                                        expression=sr["expression"])
         else:
-            reaction = tale.get("reactions", {}).get(choice)
+            reactions = _t(tale, "reactions", lang) or tale.get("reactions", {})
+            reaction = reactions.get(choice)
             if not reaction:
                 state.draft = NpcDraft(npc_id="betaal", expression="amused",
-                    line=_authored("\"Speak plainly, king: head, body, or neither?\""))
+                    line=_authored('"Speak plainly, king: head, body, or neither?"'
+                                   if lang != "hi" else
+                                   "'Seedhe bolo, rajan: sir, dhadh, ya dono nahi?'"))
             else:
                 scene.judged = True
                 state.dharma_delta = 2 if choice == tale.get("canonical") else (1 if choice == "C" else 0)
@@ -251,16 +293,16 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
                     memory_note=reaction["memory_note"],
                 )
 
-    else:  # SMALLTALK — real Betaal conversation, grounded in his memories of this king.
+    else:  # SMALLTALK
         mems = deps.knowledge.memories("betaal", sid)
         if mems:
-            fallback = (f"\"You think I have forgotten? Not long ago you taught me this: "
-                        f"{mems[0].text} I forget nothing, little king.\"")
+            fallback = (f'"You think I have forgotten? Not long ago you taught me this: '
+                        f'{mems[0].text} I forget nothing, little king."')
             expr = "intense"
         else:
-            fallback = "\"The night is long and my riddles are longer. Ask, or listen.\""
+            fallback = '"The night is long and my riddles are longer. Ask, or listen."'
             expr = "amused"
-        line = _converse(deps, system=BETAAL_SYSTEM, context=_betaal_context(deps, sid),
+        line = _converse(deps, system=_betaal_system(lang), context=_betaal_context(deps, sid),
                          fallback=fallback, user=state.request.player_input)
         state.draft = NpcDraft(npc_id="betaal", line=line, expression=expr)
     return state
@@ -326,7 +368,9 @@ def synthesizer_node(state: TurnState, deps: Deps) -> TurnState:
 
     choices: list[Choice] = []
     if s.scene.riddle_posed and not s.scene.judged:
-        choices = [Choice(id=c["id"], label=c["label"]) for c in tale.get("choices", [])]
+        lang = state.request.language or "en"
+        choices_src = _t(tale, "choices", lang) or tale.get("choices", [])
+        choices = [Choice(id=c["id"], label=c["label"]) for c in choices_src]
 
     meta = {"intent": state.intent.value, "trust": s.trust.get("betaal", 0),
             "dharma": s.dharma_score, "turn_no": s.turn_no, "strikes": s.strikes,
@@ -361,21 +405,180 @@ def deflection_render(state: TurnState) -> TurnState:
     s = store.get(sid)
     tale = _current_tale(sid)
     mod = state.moderation
+    lang = state.request.language or "en"
 
     if mod.category == "self_harm":
-        line = _SELF_HARM_LINE
+        line = (SELF_HARM_HI if lang == "hi" and SELF_HARM_HI else _SELF_HARM_LINE)
     elif s.strikes >= settings.strike_limit:
-        line = _SESSION_END_LINE
+        line = (SESSION_END_HI if lang == "hi" and SESSION_END_HI else _SESSION_END_LINE)
     else:
-        line = _DEFLECT_LINES.get(mod.category, _DEFLECT_LINES["abuse"])
+        if lang == "hi" and DEFLECT_HI:
+            line = DEFLECT_HI.get(mod.category, DEFLECT_HI["abuse"])
+        else:
+            line = _DEFLECT_LINES.get(mod.category, _DEFLECT_LINES["abuse"])
 
     keep_choices = s.scene.riddle_posed and not s.scene.judged
+    choices_src = _t(tale, "choices", lang) or tale.get("choices", [])
     state.render = SceneRender(
         scene_id=tale["scene_id"], speaker="Betaal", line=line, expression="amused",
-        choices=[Choice(id=c["id"], label=c["label"]) for c in tale.get("choices", [])] if keep_choices else [],
+        choices=[Choice(id=c["id"], label=c["label"]) for c in choices_src] if keep_choices else [],
         ambient=tale.get("ambient", ""),
         meta={"intent": "deflected", "reason": mod.reason, "category": mod.category,
               "strikes": s.strikes, "trust": s.trust.get("betaal", 0),
               "background": tale.get("background", ""), "speaker_id": "betaal"},
     )
     return state
+
+
+def translate_generative_line(line: str, target_lang: str, provider) -> str:
+    if not line.strip():
+        return line
+    if target_lang == "hi":
+        prompt = (
+            "You are a translator. Translate the following English dialogue line from the game Katha "
+            "into theatrical, dramatic Hindi (in Devanagari script). Maintain the tone and character "
+            "voice (e.g. Betaal is theatrical and sardonic). Do not add any explanation or preamble, "
+            "only return the translated line.\n\n"
+            f"Line: {line}"
+        )
+    else:
+        prompt = (
+            "You are a translator. Translate the following Hindi dialogue line from the game Katha "
+            "into theatrical, dramatic English. Maintain the tone and character "
+            "voice. Do not add any explanation or preamble, only return the translated line.\n\n"
+            f"Line: {line}"
+        )
+    try:
+        translated = provider.generate(system=prompt, context="", user=line, reference="")
+        return translated.strip() if translated else line
+    except Exception:
+        return line
+
+
+def refresh_render(session_id: str, lang: str, provider) -> SceneRender:
+    s = store.get(session_id)
+    tale = TALES.get(s.scene.tale_id or DEFAULT_TALE)
+    kind = tale.get("kind", "tale")
+    s.language = lang
+
+    lr = s.last_render or {}
+    
+    # 1. Check if the last turn was deflected
+    if lr.get("meta", {}).get("intent") == "deflected":
+        category = lr["meta"].get("category", "abuse")
+        if lang == "hi" and DEFLECT_HI:
+            line = DEFLECT_HI.get(category, DEFLECT_HI["abuse"])
+        else:
+            line = _DEFLECT_LINES.get(category, _DEFLECT_LINES["abuse"])
+        if category == "self_harm":
+            line = (SELF_HARM_HI if lang == "hi" and SELF_HARM_HI else _SELF_HARM_LINE)
+        
+        keep_choices = s.scene.riddle_posed and not s.scene.judged
+        choices_src = _t(tale, "choices", lang) or tale.get("choices", [])
+        return SceneRender(
+            scene_id=tale["scene_id"], speaker="Betaal", line=line, expression="amused",
+            choices=[Choice(id=c["id"], label=c["label"]) for c in choices_src] if keep_choices else [],
+            ambient=tale.get("ambient", ""),
+            meta=lr.get("meta", {}),
+        )
+
+    # 2. Re-translate standard authored or generative nodes
+    intent = lr.get("meta", {}).get("intent") or "smalltalk"
+    speaker = lr.get("meta", {}).get("speaker_id") or "betaal"
+    expression = lr.get("expression") or "neutral"
+    
+    if intent == "narrate" and kind == "climax":
+        tier = s.flags.get("climax_tier") or "low"
+        suspicion_aside = _t(tale, "suspicion_aside", lang)
+        warning = _t(tale, "warning", lang)
+        aside = (suspicion_aside or {}).get(s.flags.get("mendicant_suspicion", "low"), "")
+        line = aside + (warning or {})[tier]
+    elif intent == "narrate":
+        beats = _t(tale, "beats", lang) or tale.get("beats", [])
+        idx = max(0, s.scene.beat_index - 1)
+        if idx < len(beats):
+            line = beats[idx]
+            if s.scene.riddle_posed and idx == len(beats) - 1 and kind != "prologue":
+                riddle = _t(tale, "riddle", lang) or tale.get("riddle", "")
+                line = f"{line}\n\n{riddle}"
+        else:
+            if kind == "prologue":
+                line = ("The king must answer the mendicant. What is his stance?"
+                        if lang != "hi" else
+                        "Raja ko sanyasi ka uttar dena hai. Unka drishtikonn kya hai?")
+            else:
+                riddle = _t(tale, "riddle", lang) or tale.get("riddle", "")
+                line = riddle
+    elif intent == "judge" and kind == "climax":
+        choice = s.scene.last_choice_id
+        endings = _t(tale, "endings", lang) or tale.get("endings", {})
+        endset = endings.get(choice)
+        if not endset:
+            line = ('"The blade is rising, king. Bow, strike, or face him — choose NOW."'
+                    if lang != "hi" else
+                    "'Talwaar upar hai, rajan. Jhuko, vaar karo, ya saamna karo -- ABHI chuno.'")
+        else:
+            tier = s.flags.get("climax_tier") or _climax_tier(s.trust.get("betaal", 0), s.strikes)
+            line = _pick_ending(endset, tier)
+    elif intent == "judge":
+        choice = s.scene.last_choice_id
+        if kind == "prologue":
+            stance_reactions = _t(tale, "stance_reactions", lang) or tale.get("stance_reactions", {})
+            sr = stance_reactions.get(choice)
+            if not sr:
+                line = ("The king must give his answer to the mendicant."
+                        if lang != "hi" else
+                        "Raja ko sanyasi ko apna uttar dena hai.")
+            else:
+                line = sr["line"]
+        else:
+            reactions = _t(tale, "reactions", lang) or tale.get("reactions", {})
+            reaction = reactions.get(choice)
+            if not reaction:
+                line = ('"Speak plainly, king: head, body, or neither?"'
+                        if lang != "hi" else
+                        "'Seedhe bolo, rajan: sir, dhadh, ya dono nahi?'")
+            else:
+                line = reaction["line"]
+    elif intent == "investigate" and lr.get("line"):
+        if lr.get("fallback_used"):
+            target = speaker.lower()
+            mini = tale.get("mini_agents", {}).get(target)
+            if mini:
+                line = translate_generative_line(lr["line"], lang, provider)
+            else:
+                line = ('"There is no such soul in this tale, king."'
+                        if lang != "hi" else
+                        "'Is katha mein aisa koi aatma nahi hai, rajan.'")
+        else:
+            line = translate_generative_line(lr["line"], lang, provider)
+    else:
+        if lr.get("line"):
+            line = translate_generative_line(lr["line"], lang, provider)
+        else:
+            line = lr.get("line", "")
+
+    choices = []
+    if s.scene.riddle_posed and not s.scene.judged:
+        choices_src = _t(tale, "choices", lang) or tale.get("choices", [])
+        choices = [Choice(id=c["id"], label=c["label"]) for c in choices_src]
+
+    meta = dict(lr.get("meta", {}))
+    meta.update({
+        "trust": s.trust.get("betaal", 0),
+        "dharma": s.dharma_score,
+        "turn_no": s.turn_no,
+        "strikes": s.strikes,
+    })
+
+    return SceneRender(
+        scene_id=tale["scene_id"],
+        speaker=lr.get("speaker") or _display_name(speaker),
+        line=line,
+        expression=expression,
+        choices=choices,
+        ambient=tale.get("ambient", ""),
+        voice_profile=tale.get("voice_profiles", {}).get(speaker, ""),
+        fallback_used=bool(lr.get("fallback_used")),
+        meta=meta,
+    )

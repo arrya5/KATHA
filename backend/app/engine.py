@@ -48,19 +48,35 @@ def run_turn(request: TurnRequest) -> SceneRender:
     with _session_lock(request.session_id):
         t0 = time.perf_counter()
 
+        s = store.get(request.session_id)
+
+        if request.player_input == "__refresh__":
+            from .agents.nodes import refresh_render
+            render = refresh_render(request.session_id, request.language or "en", get_provider())
+            from dataclasses import asdict
+            s.last_render = asdict(render)
+            s.language = request.language or "en"
+            store.save(request.session_id)
+            return render
+
         # Tale selection / season progression: when the client names a known tale and it
         # differs from the one in progress, start that tale fresh (resets the scene runtime).
         # Empty or repeated scene_id keeps the current tale mid-play.
         if request.scene_id in TALES:
-            scene = store.get(request.session_id).scene
+            scene = s.scene
             if scene.tale_id != request.scene_id:
-                store.get(request.session_id).scene = SceneRuntime(tale_id=request.scene_id)
+                s.scene = SceneRuntime(tale_id=request.scene_id)
 
         state = TurnState(request=request, scene_id=request.scene_id)
         deps = Deps(provider=get_provider(), knowledge=knowledge_engine)
         state = _orchestrate(state, deps)
-        store.save(request.session_id)   # persist progress (no-op for the in-memory store)
         assert state.render is not None
+
+        from dataclasses import asdict
+        s.last_render = asdict(state.render)
+        s.language = request.language or "en"
+
+        store.save(request.session_id)   # persist progress (no-op for the in-memory store)
 
         ms = int((time.perf_counter() - t0) * 1000)
         m = state.render.meta

@@ -661,3 +661,23 @@ TALES = {
 
 # A new session opens on the Prologue (the frame story).
 DEFAULT_TALE = "prologue"
+
+# ---------------------------------------------------------------------------
+# Merge Hindi authored content into each tale dict (lazy-loaded from tales_hi).
+# This keeps tales.py readable (English first) while making all _hi keys
+# available on the same tale object that nodes.py already holds.
+# ---------------------------------------------------------------------------
+try:
+    from .tales_hi import (  # noqa: E402
+        PROLOGUE_HI, TRANSPOSED_HEADS_HI, LION_HI,
+        THREE_SUITORS_HI, VIRAVARA_HI, CHILD_WHO_LAUGHED_HI, CLIMAX_HI,
+    )
+    PROLOGUE.update(PROLOGUE_HI)
+    TRANSPOSED_HEADS.update(TRANSPOSED_HEADS_HI)
+    LION.update(LION_HI)
+    THREE_SUITORS.update(THREE_SUITORS_HI)
+    VIRAVARA.update(VIRAVARA_HI)
+    CHILD_WHO_LAUGHED.update(CHILD_WHO_LAUGHED_HI)
+    CLIMAX.update(CLIMAX_HI)
+except ImportError:
+    pass   # Hindi content is optional; missing file = English-only fallback

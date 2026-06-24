@@ -74,6 +74,10 @@
     <span class="stat" id="hTrust">Trust 0</span>
     <span class="stat" id="hDharma">Dharma 0</span>
     <span class="grow"></span>
+    <select id="langSelect" style="background:#0d1230;color:var(--text);border:1px solid rgba(201,168,76,.4);border-radius:20px;padding:2px 10px;font-size:12px;margin-right:12px;cursor:pointer;outline:none;font-family:inherit;">
+      <option value="en">English</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+    </select>
     <span id="voice" title="Toggle voice — Sarvam AI (hi-IN) when key is set, browser speech otherwise">🔇 Voice</span>
   </div>
 
@@ -102,11 +106,13 @@
 const SID = "web-" + Math.random().toString(36).slice(2);
 let season = [], idx = 0, scene = "prologue", typing = null;
 let voiceOn = false, ttsEnabled = false, lastRender = null;
+let lang = localStorage.getItem("katha_lang") || "en";
 
 // Single shared AudioContext — never create more than one or old ones keep playing.
 let _actx = null;
 let _curSrc = null;   // the currently playing AudioBufferSourceNode
 let _ttsAbort = null; // AbortController for the in-flight /tts fetch
+let _speechId = 0;    // tracking for current voice sequence ID
 
 function _getAudioContext(){
   if(!_actx || _actx.state === 'closed'){
@@ -138,7 +144,7 @@ function bgClass(sceneId){
 
 async function turn(playerInput="", choiceId=null){
   const r = await fetch("/turn",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({session_id:SID, player_input:playerInput, choice_id:choiceId, scene_id:scene})});
+    body:JSON.stringify({session_id:SID, player_input:playerInput, choice_id:choiceId, scene_id:scene, language:lang})});
   render(await r.json());
 }
 
@@ -150,6 +156,7 @@ function typewriter(text){
 }
 
 function stopSpeech(){
+  _speechId++; // Increment to cancel any running speak loops
   // Cancel any in-flight Sarvam fetch so it can't play after we've moved on.
   if(_ttsAbort){ _ttsAbort.abort(); _ttsAbort = null; }
   // Stop the currently playing AudioBufferSourceNode.
@@ -160,52 +167,97 @@ function stopSpeech(){
 
 function pickVoice(){
   const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  return vs.find(v=>/en-IN|hi-IN/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+  if (lang === "hi") {
+    return vs.find(v=>/hi-IN|hi/i.test(v.lang)) || vs.find(v=>/en-IN/i.test(v.lang)) || vs[0] || null;
+  } else {
+    return vs.find(v=>/en-IN/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+  }
+}
+
+function fallbackBrowserSpeech(text) {
+  const u = new SpeechSynthesisUtterance(text.replace(/[*"]/g,""));
+  const p = VOICE[lastRender ? lastRender.voice_profile : ""] || {pitch:1,rate:1};
+  u.pitch = p.pitch; u.rate = p.rate;
+  const v = pickVoice(); if(v) u.voice = v;
+  window.speechSynthesis.speak(u);
 }
 
 async function speak(r){
   if(!voiceOn || !r || !r.line) return;
   stopSpeech(); // cancels previous fetch + stops previous audio before starting anything new
+  
+  const mySpeechId = _speechId;
+  const sentences = r.line.split(/(?<=[.!?।])\s+/).filter(s => s.trim());
+  if(sentences.length === 0) return;
+
   if(ttsEnabled){ // Sarvam Bulbul v3 (production Indian voices)
-    const abortCtrl = new AbortController();
-    _ttsAbort = abortCtrl;
     try{
-      const res = await fetch("/tts",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text:r.line, voice_profile:r.voice_profile, language:"hi-IN"}),
-        signal: abortCtrl.signal,   // cancelled by stopSpeech() if a newer turn starts
-      });
-      const data = await res.json();
-      if(data.audio){
-        // Decode base64 WAV and play through the single shared AudioContext.
-        const raw = atob(data.audio);
-        const buf = new Uint8Array(raw.length);
-        for(let i=0;i<raw.length;i++) buf[i]=raw.charCodeAt(i);
-        const actx = _getAudioContext();
-        const decoded = await actx.decodeAudioData(buf.buffer);
-        // Stop whatever is playing NOW (the fetch took time; something may have started).
-        if(_curSrc){ try{ _curSrc.stop(); }catch(e){} }
-        const src = actx.createBufferSource();
-        src.buffer = decoded;
-        src.connect(actx.destination);
-        src.start(0);
-        src.onended = () => { if(_curSrc === src) _curSrc = null; };
-        _curSrc = src;
-        _ttsAbort = null;
-        return;
+      for(let i=0; i<sentences.length; i++){
+        if(mySpeechId !== _speechId) return;
+        
+        const textToSpeak = sentences[i];
+        const abortCtrl = new AbortController();
+        _ttsAbort = abortCtrl;
+        
+        const res = await fetch("/tts",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({text:textToSpeak, voice_profile:r.voice_profile, language: (lang === "hi" ? "hi-IN" : "en-IN")}),
+          signal: abortCtrl.signal,
+        });
+        
+        if(mySpeechId !== _speechId) return;
+        const data = await res.json();
+        if(mySpeechId !== _speechId) return;
+        
+        if(data.audio){
+          const raw = atob(data.audio);
+          const buf = new Uint8Array(raw.length);
+          for(let j=0;j<raw.length;j++) buf[j]=raw.charCodeAt(j);
+          const actx = _getAudioContext();
+          const decoded = await actx.decodeAudioData(buf.buffer);
+          
+          if(mySpeechId !== _speechId) return;
+          
+          // Wait if previous sentence audio is still playing
+          if(_curSrc){
+            await new Promise(resolve => {
+              const checkEnded = setInterval(() => {
+                if(!_curSrc || mySpeechId !== _speechId){
+                  clearInterval(checkEnded);
+                  resolve();
+                }
+              }, 40);
+              _curSrc.addEventListener('ended', () => {
+                clearInterval(checkEnded);
+                resolve();
+              });
+            });
+          }
+          
+          if(mySpeechId !== _speechId) return;
+          
+          const src = actx.createBufferSource();
+          src.buffer = decoded;
+          src.connect(actx.destination);
+          src.start(0);
+          _curSrc = src;
+          
+          src.onended = () => { if(_curSrc === src) _curSrc = null; };
+        }
       }
+      _ttsAbort = null;
     }catch(e){
-      if(e.name === 'AbortError') return; // cancelled intentionally — don't fall through
+      if(e.name === 'AbortError') return;
       console.warn("Sarvam TTS failed, falling back to browser speech:", e);
+      if(mySpeechId === _speechId && window.speechSynthesis){
+        fallbackBrowserSpeech(r.line);
+      }
     }
-  }
-  if(window.speechSynthesis){ // free browser fallback
-    const u = new SpeechSynthesisUtterance(r.line.replace(/[*"]/g,""));
-    const p = VOICE[r.voice_profile] || {pitch:1,rate:1};
-    u.pitch = p.pitch; u.rate = p.rate;
-    const v = pickVoice(); if(v) u.voice = v;
-    window.speechSynthesis.speak(u);
+  } else {
+    if(window.speechSynthesis){
+      fallbackBrowserSpeech(r.line);
+    }
   }
 }
 
@@ -285,6 +337,15 @@ async function init(){
   $("say").addEventListener("keydown",e=>{ if(e.key==="Enter") $("sendBtn").click(); });
   $("continueBtn").onclick=()=>turn("continue");
   $("nextBtn").onclick=nextScene;
+
+  const langSel = $("langSelect");
+  langSel.value = lang;
+  langSel.onchange = () => {
+    lang = langSel.value;
+    localStorage.setItem("katha_lang", lang);
+    turn("__refresh__");
+  };
+
   $("voice").onclick=()=>{
     voiceOn = !voiceOn;
     const label = voiceOn ? (ttsEnabled ? "🔊 Sarvam" : "🔊 Browser") : "🔇 Voice";

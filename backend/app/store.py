@@ -17,6 +17,7 @@ class SceneRuntime:
     beat_index: int = 0
     riddle_posed: bool = False
     judged: bool = False
+    last_choice_id: str | None = None
 
 
 @dataclass
@@ -31,6 +32,8 @@ class SessionState:
     dharma_log: list[dict] = field(default_factory=list)
     flags: dict[str, str] = field(default_factory=dict)   # arc flags, e.g. mendicant_suspicion
     scene: SceneRuntime = field(default_factory=SceneRuntime)
+    last_render: dict | None = None
+    language: str = "en"
 
 
 class SessionStore:

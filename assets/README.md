@@ -2,7 +2,6 @@
 
 The app serves this folder at `/assets/…` and uses real images **if present**, otherwise it
 falls back to the procedural look. No code change — generate, name correctly, drop in, reload.
-Full art direction + generation prompts: [../docs/14-art-direction-and-prompts.md](../docs/14-art-direction-and-prompts.md).
 
 ```
 backgrounds/<scene>.jpg            1080×1920 JPG. <scene> = the tale's `background` id:

@@ -1,10 +1,9 @@
 # Katha — Backend
 
-AI interactive visual novel engine. **Phase 1 content: Vikram aur Betaal** (see
-[../docs/06-phase1-vikram-betaal.md](../docs/06-phase1-vikram-betaal.md) and
-[../docs/11-phase1-content-tales-and-betaal.md](../docs/11-phase1-content-tales-and-betaal.md)).
-The engine is content-agnostic ([../docs/01-architecture.md](../docs/01-architecture.md)); the Mahabharata
-is Phase 2 ([../docs/05-phasing-roadmap.md](../docs/05-phasing-roadmap.md)).
+AI interactive visual novel engine. **Phase 1 content: Vikram aur Betaal.**
+The engine is content-agnostic; the Mahabharata is Phase 2. See the
+[root README](../README.md) and the [technical writeup](../docs/blog/leak-proof-agents.md)
+for the architecture and the knowledge-isolation design.
 
 ## Run it offline — no installs, no API keys
 
@@ -182,6 +181,4 @@ the normalized Postgres schema (docs/01 §5) is the production target. Verified 
   (`agents/graph.py`) remains the zero-install default for the offline demo. Same nodes back both;
   verified the full arc passes under each.
 - **API:** `app/api.py` (FastAPI, CORS, graceful errors) is the production surface; `app/webserver.py` is the zero-install demo.
-- **Voice:** attach Sarvam STT/TTS at `api.py` (docs/01 sec 6).
-
-See [../docs/09-build-plan.md](../docs/09-build-plan.md) for the milestone sequence.
+- **Voice:** attach Sarvam STT/TTS at `api.py`.

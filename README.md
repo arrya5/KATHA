@@ -163,23 +163,11 @@ All three run offline with the mock LLM provider. The eval suite is the canonica
 
 Katha is a cultural-preservation project as much as a game. The goal is to bring Indian mythology to life in a form that respects the source texts and is rigorous enough to survive scrutiny from scholars and the community alike. **Phase 1** (shipping now) is Vikram aur Betaal — low-risk folklore whose riddle-and-moral structure maps cleanly onto the investigation gameplay loop. **Phase 2** is the Mahabharata, gated behind a cultural-review checklist, an advisory board, and proven retention from Phase 1. The engine is content-agnostic; Phase 2 design is preserved, not wasted.
 
-See [`docs/00-research-and-market.md`](docs/00-research-and-market.md) for the market thesis and [`docs/04-cultural-fidelity.md`](docs/04-cultural-fidelity.md) for the full cultural-fidelity framework.
-
 ---
 
-## Deep dive
+## Technical writeup
 
-Five documents worth reading if you want to understand the system:
-
-| Doc | Open this if you care about... |
-|---|---|
-| [`docs/01-architecture.md`](docs/01-architecture.md) | The full agent graph, 3-layer RAG design, knowledge-state schema, and cost/latency targets |
-| [`docs/07-moderation-and-safety.md`](docs/07-moderation-and-safety.md) | The 3-layer defense-in-depth moderation system and the red-team methodology |
-| [`docs/04-cultural-fidelity.md`](docs/04-cultural-fidelity.md) | The reverence rules, advisory board framework, and why cultural fidelity is the engineering moat |
-| [`docs/00-research-and-market.md`](docs/00-research-and-market.md) | The market thesis (interactive vs. passive Indian mythology), competitive landscape, and regulatory framing |
-| [`docs/10-business-and-pitch.md`](docs/10-business-and-pitch.md) | Monetization, unit economics, and the funding path |
-
-Full design suite index: [`docs/README.md`](docs/README.md)
+[**Leak-proof AI agents: information asymmetry in a multi-agent RAG game**](docs/blog/leak-proof-agents.md) — why prompt-level "don't reveal X" fails, and how moving the boundary into the retrieval layer makes leakage structurally impossible (with the invariant test that proves it).
 
 ---
 

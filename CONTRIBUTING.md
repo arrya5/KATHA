@@ -87,4 +87,4 @@ Never check in keys or `.env` files. All secrets are read from environment varia
 
 ### Cultural sensitivity
 
-Katha handles sacred Indian narratives. Any content touching Mahabharata characters, religious rites, or mythology must be reviewed against the source-text citations in `docs/04-cultural-fidelity.md` and `docs/11-phase1-content-tales-and-betaal.md`. When in doubt, stay closer to the source text and flag for advisory review.
+Katha handles sacred Indian narratives. Any content touching Mahabharata characters, religious rites, or mythology must be reviewed against the source texts. When in doubt, stay closer to the source text and flag for advisory review.

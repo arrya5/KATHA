@@ -2,8 +2,7 @@
 
 Plain stdlib dataclasses so the engine runs without pydantic/FastAPI installed.
 The FastAPI layer (app/api.py) defines request/response schemas that convert to/from
-these. Mirrors the TurnState design in docs/01-architecture.md sec 2.1 and the schema
-in sec 5.
+these.
 """
 from __future__ import annotations
 

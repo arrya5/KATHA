@@ -4,6 +4,8 @@
 
 **A multi-agent narrative engine where each AI character can only retrieve facts it personally witnessed — information-asymmetry enforced in the retrieval layer, not by prompt instructions, and proven leak-proof by an automated eval suite.**
 
+[![▶ Live demo](https://img.shields.io/badge/▶_Live_demo-Hugging_Face_Space-FFD21E?logo=huggingface&logoColor=black)](https://arrya5-katha.hf.space)
+
 [![CI](https://github.com/arrya5/KATHA/actions/workflows/ci.yml/badge.svg)](https://github.com/arrya5/KATHA/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -16,7 +18,7 @@
 
 *Play it in your terminal or browser in under 60 seconds — no API keys required.*
 
-> **Live demo:** [huggingface.co/spaces/arrya5/katha](https://huggingface.co/spaces/arrya5/katha) *(goes live on deploy)*
+> **▶ Play it live (no install, no key):** **[arrya5-katha.hf.space](https://arrya5-katha.hf.space)**
 
 ---
 

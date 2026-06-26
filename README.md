@@ -14,8 +14,6 @@
 
 </div>
 
-![Katha playthrough](docs/assets/demo.gif)
-
 *Play it in your terminal or browser in under 60 seconds — no API keys required.*
 
 > **▶ Play it live (no install, no key):** **[arrya5-katha.hf.space](https://arrya5-katha.hf.space)**

@@ -16,5 +16,6 @@ def get_provider() -> LLMProvider:
         return OllamaProvider()
     if settings.llm_provider == "gemini":
         from .gemini import GeminiProvider
-        return GeminiProvider()
+        from .fallback import FallbackProvider
+        return FallbackProvider(primary=GeminiProvider(), fallback=MockProvider())
     return MockProvider()

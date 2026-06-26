@@ -1,0 +1,3 @@
+# Katha demo dependencies — the core engine runs on Python stdlib alone (no installs needed).
+# This file exists only for the optional Gemini cloud-LLM path.
+google-generativeai>=0.7

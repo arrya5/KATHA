@@ -52,7 +52,7 @@ class Settings:
     # "gemini": cloud (requires GEMINI_API_KEY)
     llm_provider: str = field(default_factory=lambda: _get("KATHA_LLM_PROVIDER", "mock"))
     gemini_api_key: str = field(default_factory=lambda: _get("GEMINI_API_KEY", ""))
-    gemini_model: str = field(default_factory=lambda: _get("GEMINI_MODEL", "gemini-1.5-pro"))
+    gemini_model: str = field(default_factory=lambda: _get("GEMINI_MODEL", "gemini-2.0-flash"))
     # Ollama (local, free): run `ollama serve`; default model hermes3.
     ollama_url: str = field(default_factory=lambda: _get("OLLAMA_URL", "http://localhost:11434"))
     ollama_model: str = field(default_factory=lambda: _get("KATHA_OLLAMA_MODEL", "hermes3"))

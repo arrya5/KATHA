@@ -94,8 +94,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-def main(host: str = "127.0.0.1", port: int = 8000) -> None:
+def main(host: str | None = None, port: int | None = None) -> None:
     import logging
+    import os
+    host = host or os.environ.get("HOST", "127.0.0.1")
+    port = port or int(os.environ.get("PORT", "8000"))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"Katha is playable at  http://{host}:{port}   (Ctrl+C to stop)")

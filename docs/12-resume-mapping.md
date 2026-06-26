@@ -18,7 +18,7 @@ Legend: ✅ earned (code exists & runs) · 🟡 partial (scaffold/stub) · ⬜ p
 | **Advanced RAG** | ✅ | `app/rag/` — 3-layer retrieval + the **knowledge-state engine** (witnessed-canon + `known_to` filters); provider-agnostic vector store | M1 |
 | **Semantic retrieval / embeddings** | ✅ | `app/rag/embeddings.py` — real embeddings (Ollama, free local) + cosine vector store, lexical fallback; verified meaning-based retrieval | M1 |
 | **Novel system design (the differentiator)** | ✅ | Information-asymmetry / knowledge-state engine; proven by passing leak tests (incl. prompt-level: a real model never *sees* unwitnessed facts) | M0–M2 |
-| **LLM safety / guardrails / red-teaming** | ✅ | `app/moderation/` 3-layer defense; jailbreak/break-character deflection; eval sets **12/12 red-team caught + 12/12 benign allowed** | M3 |
+| **LLM safety / guardrails / red-teaming** | ✅ | `app/moderation/` 3-layer defense; jailbreak/break-character deflection; eval sets **40/40 red-team caught + 20/20 benign allowed** | M3 |
 | **Eval-driven development** | ✅ | `app/selftest.py` (**33 checks**), `tests/test_engine.py`, `data/processed/eval/*.jsonl` | always-on |
 | **Prompt engineering** | ✅ | `app/content/betaal_prompt.py` + dynamic context assembly that resists injection | M2 |
 | **Provider-swappable LLM integration** | ✅ | `app/llm/` interface + `MockProvider` + **`OllamaProvider` (real local generation, verified live)** + `GeminiProvider` stub | M2 |
@@ -49,7 +49,7 @@ Applied-AI profile. Voice and fine-tuning are the remaining marquee adds.
   + per-agent memory) with **real semantic embeddings** (cosine retrieval) and a lexical fallback.
 - Built a **3-layer content-moderation/guardrail stack** (input classifier, in-character
   deflection, output validator) hardened against jailbreaks and break-character attacks —
-  **12/12 red-team attacks caught, 12/12 benign inputs allowed**.
+  **40/40 red-team attacks caught, 20/20 benign inputs allowed**.
 - Practiced **eval-driven development**: 33 automated checks incl. structural leak tests,
   canon-consistency, and red-team/false-positive eval sets run as CI gates.
 - Engineered a **provider-swappable LLM abstraction** (offline mock + **real local Ollama** +

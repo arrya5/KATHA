@@ -1,119 +1,192 @@
-# Katha 📖✨
+<div align="center">
 
-> **AI-Powered Interactive Visual Novels in Indian Mythology**
-> 
-> *Live inside the epic, instead of just reading it.*
+# Katha
 
----
+**A multi-agent narrative engine where each AI character can only retrieve facts it personally witnessed — information-asymmetry enforced in the retrieval layer, not by prompt instructions, and proven leak-proof by an automated eval suite.**
 
-## 1. The Vision
+[![CI](https://github.com/arrya5/KATHA/actions/workflows/ci.yml/badge.svg)](https://github.com/arrya5/KATHA/actions/workflows/ci.yml)
+![python](https://img.shields.io/badge/python-3.12-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![runs offline](https://img.shields.io/badge/runs%20offline-no%20API%20keys-orange)
+![leak-proof](https://img.shields.io/badge/leak--proof-0%20leaks-brightgreen)
 
-**Katha** is a voice-first, AI-powered interactive visual novel engine designed for Android. 
+</div>
 
-### Core IP: The Information-Asymmetry Engine
-In Katha, every character is an independent AI agent with persistent memory and an **isolated knowledge state**. An agent only knows what they have witnessed, heard, or were told directly. This structural information-asymmetry drives gameplay: you must investigate, build trust, and query NPCs who hold different pieces of the puzzle.
+![Katha playthrough](docs/assets/demo.gif)
 
-### Release Phasing
-1. **Phase 1: Vikram aur Betaal** (Current Focus)
-   - A low-risk folklore setting that serves as the perfect tutorial. The riddle-and-moral structure of the Baital Pachisi is mapped directly into gameplay loops.
-2. **Phase 2: Mahabharata** (Marquee Arc)
-   - A massive branching narrative unlocked after Phase 1 matures, ensuring high cultural fidelity and refined moderation before handling major sacred narratives.
+*Play it in your terminal or browser in under 60 seconds — no API keys required.*
 
----
-
-## 2. Directory Structure
-
-This repository is structured for modularity and clean separation between backend and frontend.
-
-```
-Katha/
-├── backend/            # Python core engine & API
-│   ├── app/            # LangGraph orchestrator, RAG, and endpoints
-│   └── tests/          # Robust test coverage (leak-testing, simulation)
-├── frontend/           # Expo (React Native) Android/iOS app
-│   ├── App.tsx         # Mobile entry point
-│   └── src/            # Theme, screens, components, and API integration
-├── docs/               # 15 deep-dive design documents (00 to 14)
-├── data/               # Raw sources (provenance) & evaluation gates
-└── assets/             # Drop-in slots for background & character art
-```
+> **Live demo:** [huggingface.co/spaces/arrya5/katha](https://huggingface.co/spaces/arrya5/katha) *(goes live on deploy)*
 
 ---
 
-## 3. Quick Start
+### Why this is technically interesting
 
-You can run Katha completely free and offline with zero local setup besides Python, or spin up the full mobile Expo stack.
+Most multi-agent demos share a single global context, meaning any agent can be prompted to surface any fact — leakage is a social contract enforced only by the system prompt, which any jailbreak or paraphrase can break. Katha takes a different approach: **if the secret never enters an agent's context window, no decoding path can emit it.**
 
-### Option A: The Zero-Dependency Terminal & Web Play (Recommended First)
-Play the game immediately in your terminal or browser with **no installations** and **no API keys**.
+The core mechanism is a **witness gate** applied at retrieval time. Every canon fact in the knowledge base is tagged with `characters_present` (the agents who witnessed that event). When an NPC queries the knowledge state, L1 retrieval filters on that metadata — the secret is structurally absent from the context, not merely discouraged. The OMNISCIENT narrator Betaal bypasses the gate and can see all facts, which is both the story mechanic and a clean test oracle for the guarantee.
+
+This makes leakage provably impossible at the retrieval layer rather than probabilistically suppressed at the prompt layer — a meaningful engineering distinction in any system where agents must hold asymmetric information.
+
+---
+
+## Quickstart
+
+Zero installations beyond Python 3.12. Zero API keys.
 
 ```bash
-cd backend
+git clone https://github.com/arrya5/KATHA.git
+cd KATHA/backend
 
-# 1. Run the self-test (33 checks verifying the knowledge-state isolation)
+# 1. Run the full self-test (knowledge-leak guarantees, moderation evals, full story arc)
 python -m app.selftest
 
-# 2. Play the full story arc inside your terminal
+# 2. Play the complete story arc in your terminal
 python -m app.demo
 
-# 3. Play the interactive visual novel in your browser (HTTP client)
+# 3. Play in your browser (interactive visual novel UI)
 python -m app.webserver
-# ▶ Open http://127.0.0.1:8000 in your browser
+# Open http://127.0.0.1:8000
 ```
 
-### Option B: The Mobile App (Expo Go)
-Run the React Native Expo app on your phone.
+To verify the leak-proofness metric directly:
 
 ```bash
-# 1. Start the backend server (FastAPI/stdlib webserver)
-cd backend
-python -m app.webserver
-
-# 2. Start the Expo packager
-cd ../frontend
-npm install
-npm start
-# ▶ Scan the QR code using the Expo Go app on your physical device
+python -m app.eval_leak
+# Prints the adversarial probe results and exits 0 if the invariant holds
 ```
-*Note: Make sure your phone and computer are on the same Wi-Fi network. The Expo configuration will auto-detect your computer's LAN IP and link up with the backend.*
+
+Mobile (optional): `cd frontend && npm install && npm start` — scan the QR code with Expo Go on a real device. Your phone and computer need to be on the same Wi-Fi network.
 
 ---
 
-## 4. Configuration & Env Switches
+## Architecture
 
-The backend is fully swappable and offline-first by default. To unlock advanced features, copy `backend/.env.example` to `backend/.env` and set the following:
+### Turn graph (6 nodes)
 
-| Env Variable | Default | Options | What it does |
-|---|---|---|---|
-| `KATHA_LLM_PROVIDER` | `mock` | `ollama`, `gemini` | Switches from scripted lines to real LLM-improvisation. |
-| `KATHA_EMBEDDINGS` | `lexical` | `ollama` | Enables local semantic query search (requires `nomic-embed-text`). |
-| `KATHA_ORCHESTRATOR` | `simple` | `langgraph` | Swaps the stdlib runner for production LangGraph orchestrator. |
-| `DATABASE_URL` | (in-memory) | `sqlite:///katha.db` | Persists session, trust, flags, and player progress. |
-| `SARVAM_API_KEY` | (unset) | Your API Key | Enables high-quality Indian TTS voices via Sarvam AI. |
-| `GEMINI_API_KEY` | (unset) | Your API Key | Enables production-grade LLM generation. |
+```mermaid
+flowchart LR
+    Player([Player input]) --> Mod[Moderation]
+    Mod -- block --> Defl["Deflection<br/>authored fallback"]
+    Mod -- allow --> NR[Narrator / Router]
+    NR --> Agent["Agent node<br/>retrieves bounded context<br/>from Knowledge-State engine"]
+    Agent --> WS["World-State<br/>writes known_to"]
+    WS --> Val[Validator]
+    Val -- fail --> AF[Authored fallback]
+    Val -- pass --> Synth[Synthesizer]
+    Synth --> SR(["SceneRender<br/>to client"])
+```
+
+Runs on a stdlib runner (zero extra installs) or LangGraph (`KATHA_ORCHESTRATOR=langgraph`) — same node functions, swappable wiring.
+
+### The witness gate (knowledge isolation)
+
+```mermaid
+flowchart TD
+    Q[Player query] --> Gate{"Witness gate<br/>L1 canon filter"}
+
+    subgraph L1 ["L1 canon (characters_present tag)"]
+        F1["Fact A — characters_present: [Betaal, Vikram]"]
+        F2["Secret B — characters_present: [Betaal]"]
+    end
+
+    Gate -- "NPC: Vikram's wife<br/>not in characters_present for Secret B" --> Miss["Secret B absent<br/>from context window"]
+    Gate -- "Teller: Betaal<br/>omniscient — bypasses gate" --> Hit["Secret B present<br/>in context window"]
+
+    Miss --> NPC["NPC response:<br/>'I did not witness that.'"]
+    Hit --> Teller["Betaal response:<br/>correct, grounded answer"]
+```
 
 ---
 
-## 5. Guide to Deep-Dive Docs
+## The witness gate (knowledge isolation)
 
-The `docs/` folder contains comprehensive documentation from regulatory compliance to prompt engineering.
+The engine uses three retrieval layers:
 
-* **Architecture**: [`01-architecture.md`](docs/01-architecture.md) — Multi-agent state machine, 3-layer RAG.
-* **Cultural Fidelity**: [`04-cultural-fidelity.md`](docs/04-cultural-fidelity.md) — Sensitivity protocols, advisory board framework.
-* **Roadmap & Plan**: [`05-phasing-roadmap.md`](docs/05-phasing-roadmap.md) & [`09-build-plan.md`](docs/09-build-plan.md) — The milestone phases.
-* **Character Bibles**: [`03-npc-prompts.md`](docs/03-npc-prompts.md) & [`11-phase1-content-tales-and-betaal.md`](docs/11-phase1-content-tales-and-betaal.md).
-* **Legal & Compliance**: [`08-legal-and-compliance.md`](docs/08-legal-and-compliance.md) — Online Gaming Act 2025 and DPDP compliance.
-* **Art Direction**: [`14-art-direction-and-prompts.md`](docs/14-art-direction-and-prompts.md) — Prompt guidelines for visual styles.
+| Layer | What it indexes | Gate |
+|---|---|---|
+| L1 — witnessed canon | Hard facts from the tales (story beats, secrets) | `characters_present` — only agents who were there get the fact |
+| L2 — world events | Events that happened during gameplay | `known_to` — written at event time; only witnesses get it |
+| L3 — per-agent memory | Each agent's own conversational history | No cross-agent access by construction |
+
+**This is enforced in code, not in a prompt.** The gate lives in `backend/rag/knowledge_state.py`. An agent cannot retrieve a fact that was never added to its retrieval set, regardless of what the LLM is told or how the user phrases the question.
+
+Proof from `python -m app.selftest`:
+
+```
+Knowledge-leak (L1 witnessed canon):
+  [PASS] Betaal (teller) can access the secret fact
+  [PASS] The wife CANNOT access the secret she didn't witness
+```
+
+Running `python -m app.eval_leak` probes the full adversarial set:
+
+```text
+  LEAK-PROOFNESS (security invariant -- gates this run)
+    forbidden facts withheld from non-witnesses : 28/28
+    information leaks                           : 0
+  RESULT: 28/28 secrets withheld across the probe set -- 0 leaks. Leak-proof by construction.
+```
+
+> **0 information leaks across the full 28-probe adversarial set** — the guarantee is enforced in the retrieval layer, not requested in a prompt.
 
 ---
 
-## 6. Collaboration Guidelines for the Team
+## Tech stack
 
-Welcome to the team! Here is how we keep the codebase clean and solid:
+| Layer | Choice |
+|---|---|
+| Language | Python 3.12 |
+| Agent orchestration | 6-node turn graph; stdlib runner (default) + LangGraph (production) |
+| RAG | 3-layer (L1 witnessed canon / L2 world-events / L3 memory); lexical default, Ollama semantic optional |
+| LLM providers | Mock (offline, deterministic, zero keys) / Ollama (local) / Gemini (cloud) — provider-swappable via one env var |
+| Moderation | 3-layer: input classifier → output validator → authored-fallback safety net |
+| Persistence | In-memory (default) / SQLite (`DATABASE_URL=sqlite:///katha.db`) |
+| Client | Browser (stdlib HTTP + `web/index.html`) / Expo + React Native (mobile) |
+| Voice | Sarvam TTS (key-gated, plug-and-play); browser TTS fallback offline |
 
-1. **Keep the Self-Test Green**: Always run `python -m app.selftest` before pushing any changes. It guarantees the core game engine, state validation, and RAG leakage protection are functional.
-2. **Branching Strategy**: 
-   - Work on feature branches (`feature/your-feature-name`).
-   - Open a Pull Request (PR) to `main` for code reviews.
-3. **No Hardcoded Secrets**: Never check in keys or `.env` files. Access secrets exclusively via `backend/app/config.py`.
-4. **Offline Fallback Guarantee**: Any external service failure (LLM provider down, voice provider down, vector store error) must catch exceptions gracefully and fall back to the offline mock/lexical versions so the game remains fully playable.
+---
+
+## Tests & evals
+
+| Command | What it covers |
+|---|---|
+| `python -m app.selftest` | Knowledge-leak invariants (witnessed-canon gate, world-event gate); moderation red-team inputs (40/40 caught); moderation false-positive set (20/20 allowed); full story arc end-to-end |
+| `pytest backend/tests/` | Unit and integration tests for engine nodes, RAG layers, and persistence |
+| `python -m app.eval_leak` | Adversarial probe suite (28 probes) — systematically attempts to extract secrets through every NPC; reports leak count and exits 0 if 0 leaks (currently 28/28 withheld, 0 leaks) |
+
+All three run offline with the mock LLM provider. The eval suite is the canonical proof of the knowledge-isolation guarantee.
+
+---
+
+## Vision
+
+Katha is a cultural-preservation project as much as a game. The goal is to bring Indian mythology to life in a form that respects the source texts and is rigorous enough to survive scrutiny from scholars and the community alike. **Phase 1** (shipping now) is Vikram aur Betaal — low-risk folklore whose riddle-and-moral structure maps cleanly onto the investigation gameplay loop. **Phase 2** is the Mahabharata, gated behind a cultural-review checklist, an advisory board, and proven retention from Phase 1. The engine is content-agnostic; Phase 2 design is preserved, not wasted.
+
+See [`docs/00-research-and-market.md`](docs/00-research-and-market.md) for the market thesis and [`docs/04-cultural-fidelity.md`](docs/04-cultural-fidelity.md) for the full cultural-fidelity framework.
+
+---
+
+## Deep dive
+
+Five documents worth reading if you want to understand the system:
+
+| Doc | Open this if you care about... |
+|---|---|
+| [`docs/01-architecture.md`](docs/01-architecture.md) | The full agent graph, 3-layer RAG design, knowledge-state schema, and cost/latency targets |
+| [`docs/07-moderation-and-safety.md`](docs/07-moderation-and-safety.md) | The 3-layer defense-in-depth moderation system and the red-team methodology |
+| [`docs/04-cultural-fidelity.md`](docs/04-cultural-fidelity.md) | The reverence rules, advisory board framework, and why cultural fidelity is the engineering moat |
+| [`docs/00-research-and-market.md`](docs/00-research-and-market.md) | The market thesis (interactive vs. passive Indian mythology), competitive landscape, and regulatory framing |
+| [`docs/10-business-and-pitch.md`](docs/10-business-and-pitch.md) | Monetization, unit economics, and the funding path |
+
+Full design suite index: [`docs/README.md`](docs/README.md)
+
+---
+
+## Author
+
+**Arrya Thakur** — SRM Chennai CS '27
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

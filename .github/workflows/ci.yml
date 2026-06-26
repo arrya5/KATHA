@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint and test tools
+        run: pip install pytest ruff mypy
+
+      - name: Self-test (core engine + knowledge-isolation gates)
+        working-directory: backend
+        run: python -m app.selftest
+
+      - name: pytest
+        working-directory: backend
+        run: python -m pytest -q
+
+      - name: Eval leak (0-leak assertion)
+        working-directory: backend
+        run: python -m app.eval_leak
+
+      - name: ruff check
+        run: ruff check backend
+
+      - name: mypy
+        working-directory: backend
+        run: mypy app --config-file ../pyproject.toml

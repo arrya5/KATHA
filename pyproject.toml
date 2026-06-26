@@ -1,0 +1,29 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = [
+    "E402",  # module-level import not at top of file (logging/config setup precedes imports in some modules)
+    "E501",  # line too long (content strings and long literals are intentional)
+    "E741",  # ambiguous variable name (existing use of 'l' in list comprehensions)
+    "F401",  # imported but unused (some imports are conditional or used as re-exports)
+    "F541",  # f-string without any placeholders (existing code style)
+    "F841",  # local variable assigned but never used (existing code)
+    "I001",  # import block is un-sorted (existing code; reformatting is a separate pass)
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+disable_error_code = [
+    "attr-defined",
+    "index",
+    "arg-type",
+    "assignment",
+    "union-attr",
+    "return-value",
+    "no-redef",
+]

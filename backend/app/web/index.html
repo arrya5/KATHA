@@ -5,338 +5,833 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Katha — Vikram aur Betaal</title>
 <style>
-  :root{
-    --gold:#C9A84C; --ink:#0b1026; --panel:rgba(8,10,28,.82);
-    --text:#f3ead4; --dim:#b9b09a; --saffron:#e8a33d;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
-    color:var(--text);background:#05060f;overflow:hidden}
-  #scene{position:fixed;inset:0;transition:background 1.2s ease;
-    background:radial-gradient(120% 90% at 50% 10%,#26306b 0%,#141a3c 45%,#070a1c 100%)}
-  #scene.bg-court{background:radial-gradient(120% 90% at 50% 10%,#5a3a1e 0%,#2c1f12 50%,#0b0a08 100%)}
-  #scene.bg-cremation{background:radial-gradient(120% 90% at 50% 0%,#2a2150 0%,#161235 50%,#070612 100%)}
-  #scene.bg-river{background:radial-gradient(120% 90% at 50% 10%,#16384a 0%,#0e2230 50%,#060e16 100%)}
-  #scene.bg-climax{background:radial-gradient(120% 100% at 50% 30%,#5b1622 0%,#27101c 50%,#0a0510 100%)}
-  #vignette{position:fixed;inset:0;box-shadow:inset 0 0 220px 60px rgba(0,0,0,.75);pointer-events:none}
-  #bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s}
-  #portimg{width:172px;height:210px;object-fit:contain;display:none;filter:drop-shadow(0 0 30px rgba(201,168,76,.4))}
+:root{
+  --gold:#C9A84C; --saffron:#e8a33d; --ink:#05060f;
+  --panel:rgba(7,9,24,.86); --text:#f3ead4; --dim:#b9b09a;
+  --night:#0b1026;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;
+  font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Georgia,ui-serif;
+  color:var(--text);background:var(--ink);overflow:hidden}
 
-  #hud{position:fixed;top:0;left:0;right:0;display:flex;gap:18px;align-items:center;
-    padding:10px 18px;font-size:13px;color:var(--dim);letter-spacing:.04em;
-    background:linear-gradient(#05060f,rgba(5,6,15,0));z-index:5}
-  #hud .title{color:var(--gold);font-weight:600;letter-spacing:.12em;text-transform:uppercase}
-  #hud .stat{padding:2px 10px;border:1px solid rgba(201,168,76,.35);border-radius:20px}
-  #hud .grow{flex:1}
-  #voice{cursor:pointer;border:1px solid rgba(201,168,76,.35);border-radius:20px;padding:2px 10px}
+/* ── SCENE ── */
+#scene{position:fixed;inset:0;transition:background 1.4s ease;
+  background:radial-gradient(120% 90% at 50% 10%,#26306b 0%,#141a3c 45%,#070a1c 100%);
+  will-change:transform}
+#scene.bg-court{background:radial-gradient(120% 90% at 50% 10%,#5a3a1e 0%,#2c1f12 50%,#0b0a08 100%)}
+#scene.bg-cremation{background:radial-gradient(120% 90% at 50% 0%,#2a2150 0%,#161235 50%,#070612 100%)}
+#scene.bg-river{background:radial-gradient(120% 90% at 50% 10%,#16384a 0%,#0e2230 50%,#060e16 100%)}
+#scene.bg-climax{background:radial-gradient(120% 100% at 50% 30%,#5b1622 0%,#27101c 50%,#0a0510 100%)}
 
-  #portraitWrap{position:fixed;left:0;right:0;top:46%;transform:translateY(-50%);
-    display:flex;justify-content:center;pointer-events:none}
-  #portrait{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:64px;color:#1a1330;background:radial-gradient(circle at 35% 30%,#f6d98a,#c9a84c 70%,#6b531f);
-    box-shadow:0 0 60px 10px rgba(201,168,76,.25);border:2px solid rgba(255,255,255,.25);
-    transition:transform .4s, box-shadow .4s}
-  #portrait.intense{box-shadow:0 0 70px 14px rgba(232,120,60,.45);transform:scale(1.04)}
-  #portrait.grave{filter:saturate(.7) brightness(.85)}
-  #expr{margin-top:10px;text-align:center;color:var(--dim);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+/* Ken Burns — disabled by prefers-reduced-motion */
+@keyframes kenburns{
+  0%{transform:scale(1) translate(0,0)}
+  50%{transform:scale(1.06) translate(-.5%,-.4%)}
+  100%{transform:scale(1) translate(.3%,.2%)}
+}
+#scene{animation:kenburns 28s ease-in-out infinite alternate}
 
-  #panel{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
-    border-top:2px solid var(--gold);backdrop-filter:blur(3px);
-    padding:18px 22px 22px;max-height:48%;display:flex;flex-direction:column;z-index:4}
-  #speaker{color:var(--gold);font-size:15px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px}
-  #line{font-size:19px;line-height:1.6;min-height:3.2em;white-space:pre-wrap;cursor:pointer;overflow:auto}
-  #ambient{color:var(--dim);font-style:italic;font-size:12px;margin-top:6px}
-  #controls{margin-top:14px;display:flex;flex-direction:column;gap:8px}
-  .choices{display:flex;flex-direction:column;gap:8px}
-  .choice{text-align:left;background:rgba(201,168,76,.10);color:var(--text);border:1px solid rgba(201,168,76,.5);
-    padding:11px 14px;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;transition:.15s}
-  .choice:hover{background:rgba(201,168,76,.22);transform:translateX(3px)}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  #say{flex:1;min-width:180px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
-    color:var(--text);padding:10px 12px;border-radius:8px;font-family:inherit;font-size:15px}
-  .btn{background:transparent;color:var(--gold);border:1px solid rgba(201,168,76,.5);
-    padding:10px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;transition:.15s}
-  .btn:hover{background:rgba(201,168,76,.15)}
-  .btn.primary{background:var(--gold);color:#1a1330;font-weight:600}
-  #ending{display:none;position:fixed;inset:0;z-index:9;background:rgba(5,4,12,.92);
-    flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px}
-  #ending h1{color:var(--gold);letter-spacing:.2em;text-transform:uppercase}
-  #ending p{max-width:680px;font-size:18px;line-height:1.7}
-  select{background:#0d1230;color:var(--text);border:1px solid rgba(201,168,76,.4);border-radius:8px;padding:8px}
+/* Moon glow layer */
+#moonGlow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 30% 18% at 50% 0%,rgba(200,215,255,.07),transparent 70%)}
+@keyframes moonPulse{0%,100%{opacity:.5}50%{opacity:1}}
+#moonGlow{animation:moonPulse 7s ease-in-out infinite}
+
+/* Ground haze */
+#groundHaze{position:absolute;left:0;right:0;bottom:0;height:28%;pointer-events:none;
+  background:linear-gradient(transparent,rgba(40,18,0,.32))}
+
+/* Pyre light — only active on cremation class */
+#pyreLight{position:absolute;left:18%;bottom:0;width:28%;height:40%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 100%,rgba(255,100,30,.22),transparent 70%);
+  opacity:0;transition:opacity .5s}
+@keyframes pyreFlicker{
+  0%{opacity:.18}10%{opacity:.38}23%{opacity:.14}37%{opacity:.32}52%{opacity:.09}
+  68%{opacity:.28}81%{opacity:.16}90%{opacity:.35}100%{opacity:.21}
+}
+#scene.bg-cremation #pyreLight{opacity:1;animation:pyreFlicker 3.1s ease-in-out infinite}
+#scene.bg-climax #pyreLight{opacity:1;animation:pyreFlicker 2.1s ease-in-out infinite}
+
+#bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .8s;will-change:opacity}
+
+/* Film grain */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size:200px 200px}
+
+/* Vignette */
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:3;
+  box-shadow:inset 0 0 260px 80px rgba(0,0,0,.82);
+  background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 45%,rgba(0,0,0,.55) 100%)}
+
+/* Particles canvas */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:4}
+
+/* ── HUD ── */
+#hud{position:fixed;top:0;left:0;right:0;display:flex;gap:12px;align-items:flex-start;
+  padding:10px 18px 14px;font-size:13px;color:var(--dim);letter-spacing:.04em;
+  background:linear-gradient(#05060f 40%,rgba(5,6,15,0));z-index:10}
+.hud-title-block{display:flex;flex-direction:column;gap:2px}
+#hud .title{color:var(--gold);font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  font-size:14px;line-height:1.2}
+.hud-sub{font-size:10px;letter-spacing:.06em;color:var(--dim);opacity:.72;
+  text-transform:uppercase;font-style:italic}
+#hud .stat{padding:2px 10px;border:1px solid rgba(201,168,76,.35);border-radius:20px;
+  white-space:nowrap}
+.hud-pill-link{padding:2px 10px;border:1px solid rgba(201,168,76,.35);border-radius:20px;
+  color:var(--gold);text-decoration:none;font-size:12px;cursor:pointer;
+  background:transparent;border-color:rgba(201,168,76,.35);font-family:inherit;
+  transition:background .15s,border-color .15s;white-space:nowrap}
+.hud-pill-link:hover{background:rgba(201,168,76,.14);border-color:rgba(201,168,76,.7)}
+.hud-pill-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#hud .grow{flex:1}
+#voice{cursor:pointer;border:1px solid rgba(201,168,76,.35);border-radius:20px;
+  padding:2px 10px;white-space:nowrap;transition:background .15s}
+#voice:hover{background:rgba(201,168,76,.12)}
+#voice:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ── PORTRAIT ── */
+#portraitWrap{position:fixed;left:0;right:0;top:46%;transform:translateY(-50%);
+  display:flex;justify-content:center;pointer-events:none;z-index:5}
+#portimg{width:172px;height:210px;object-fit:contain;display:none;
+  filter:drop-shadow(0 0 30px rgba(201,168,76,.4))}
+@keyframes breatheFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes breatheFloatIntense{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes auraOrange{0%,100%{box-shadow:0 0 60px 10px rgba(232,168,76,.28),0 0 0 2px rgba(255,255,255,.18)}
+  50%{box-shadow:0 0 80px 20px rgba(255,100,30,.5),0 0 0 2px rgba(255,160,60,.4)}}
+@keyframes auraTeal{0%,100%{box-shadow:0 0 60px 10px rgba(76,201,180,.22),0 0 0 2px rgba(255,255,255,.18)}
+  50%{box-shadow:0 0 80px 18px rgba(40,210,190,.38),0 0 0 2px rgba(80,210,195,.4)}}
+@keyframes voiceActiveGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
+
+#portrait{width:150px;height:150px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:64px;color:#1a1330;
+  background:radial-gradient(circle at 35% 30%,#f6d98a,#c9a84c 70%,#6b531f);
+  box-shadow:0 0 60px 10px rgba(201,168,76,.28),0 0 0 2px rgba(255,255,255,.18);
+  border:2px solid rgba(255,255,255,.22);
+  transition:transform .4s,box-shadow .4s,filter .4s,background .6s;
+  animation:breatheFloat 4.2s ease-in-out infinite}
+
+/* Speaker-specific sigil backgrounds */
+#portrait.spk-betaal{
+  background:radial-gradient(circle at 35% 30%,#a8cfff,#4a7ec9 60%,#1a2a4a);
+  box-shadow:0 0 60px 12px rgba(100,160,255,.32),0 0 0 2px rgba(150,200,255,.3)}
+#portrait.spk-vikramaditya{
+  background:radial-gradient(circle at 35% 30%,#f6e498,#c9a84c 70%,#6b4a1a);
+  box-shadow:0 0 60px 12px rgba(201,168,76,.35),0 0 0 2px rgba(240,220,130,.35)}
+#portrait.spk-narrator{
+  background:radial-gradient(circle at 35% 30%,#e8dfc8,#b8a88a 70%,#5a4e3a);
+  box-shadow:0 0 60px 10px rgba(200,185,150,.25),0 0 0 2px rgba(230,220,190,.25)}
+#portrait.intense{animation:breatheFloatIntense 2.4s ease-in-out infinite,auraOrange 2.4s ease-in-out infinite}
+#portrait.grave{filter:saturate(.6) brightness(.8);animation:breatheFloat 6s ease-in-out infinite}
+#portrait.amused{animation:breatheFloat 3.6s ease-in-out infinite,auraTeal 4s ease-in-out infinite}
+#portrait.voice-active{animation:voiceActiveGlow .6s ease-in-out 3}
+#expr{margin-top:10px;text-align:center;color:var(--dim);font-size:11px;
+  letter-spacing:.22em;text-transform:uppercase}
+
+/* ── PANEL ── */
+#panel{position:fixed;left:0;right:0;bottom:0;
+  background:var(--panel);border-top:2px solid var(--gold);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  padding:16px 22px 20px;max-height:48%;display:flex;flex-direction:column;z-index:6}
+@supports not (backdrop-filter:blur(1px)){
+  #panel{background:rgba(7,9,28,.97)}
+}
+#panel.voice-active-panel{
+  border-top-color:var(--saffron);
+  box-shadow:0 -4px 24px rgba(232,163,61,.25)}
+#speaker{color:var(--gold);font-size:15px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px}
+#line{font-size:18px;line-height:1.65;min-height:3.2em;white-space:pre-wrap;cursor:pointer;
+  overflow:auto;caret-color:var(--gold)}
+#line:focus-visible{outline:none}
+/* Blinking cursor */
+#line::after{content:'|';opacity:0;color:var(--gold);animation:none}
+#line.typing::after{opacity:1;animation:blink .7s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+[aria-live]{min-height:1em}
+#ambient{color:var(--dim);font-style:italic;font-size:12px;margin-top:6px;
+  transition:opacity .5s;min-height:1.1em}
+#controls{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.choices{display:flex;flex-direction:column;gap:8px}
+.choice{text-align:left;background:rgba(201,168,76,.10);color:var(--text);
+  border:1px solid rgba(201,168,76,.5);padding:11px 14px;border-radius:8px;
+  font-size:16px;cursor:pointer;font-family:inherit;transition:.15s}
+.choice:hover{background:rgba(201,168,76,.22);transform:translateX(3px)}
+.choice:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#say{flex:1;min-width:160px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.18);color:var(--text);
+  padding:10px 12px;border-radius:8px;font-family:inherit;font-size:15px}
+#say:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn{background:transparent;color:var(--gold);border:1px solid rgba(201,168,76,.5);
+  padding:10px 14px;border-radius:8px;cursor:pointer;font-family:inherit;
+  font-size:14px;transition:.15s;min-height:44px}
+.btn:hover{background:rgba(201,168,76,.15)}
+.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn:disabled{opacity:.45;cursor:default;pointer-events:none}
+.btn.primary{background:var(--gold);color:#1a1330;font-weight:600}
+.btn.primary:hover{background:var(--saffron)}
+select{background:#0d1230;color:var(--text);border:1px solid rgba(201,168,76,.4);
+  border-radius:8px;padding:8px;font-family:inherit}
+select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ── ENDING ── */
+#ending{display:none;position:fixed;inset:0;z-index:20;
+  background:rgba(5,4,12,.94);
+  flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:40px}
+#ending h1{color:var(--gold);letter-spacing:.2em;text-transform:uppercase}
+#ending p{max-width:680px;font-size:18px;line-height:1.7}
+
+/* ── LOADING OVERLAY ── */
+#loadOverlay{position:fixed;inset:0;z-index:50;
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,#0f1535,#05060f);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;transition:opacity .8s}
+#loadOverlay.hidden{opacity:0;pointer-events:none}
+.load-glyph{font-size:72px;color:var(--gold);
+  animation:loadPulse 2.2s ease-in-out infinite}
+@keyframes loadPulse{0%,100%{opacity:.3;transform:scale(.96)}50%{opacity:1;transform:scale(1.03)}}
+.load-text{font-size:18px;color:var(--gold);letter-spacing:.14em;text-align:center}
+.load-sub{font-size:13px;color:var(--dim);letter-spacing:.06em;opacity:0;
+  transition:opacity 1s;text-align:center;max-width:320px}
+.load-sub.show{opacity:1}
+
+/* ── TITLE SCREEN ── */
+#titleScreen{position:fixed;inset:0;z-index:40;
+  background:radial-gradient(ellipse 80% 90% at 50% 40%,#14204e 0%,#0a0f26 55%,#05060f 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px;gap:14px;
+  transition:opacity .9s}
+#titleScreen.hidden{opacity:0;pointer-events:none}
+.title-ornament{font-size:28px;color:var(--gold);opacity:.7;letter-spacing:.3em}
+.title-wordmark{font-size:clamp(52px,10vw,88px);color:var(--gold);
+  letter-spacing:.22em;text-transform:uppercase;line-height:1;
+  text-shadow:0 0 80px rgba(201,168,76,.5),0 0 200px rgba(201,168,76,.18)}
+.title-sub1{font-size:clamp(18px,3.5vw,26px);color:var(--text);
+  letter-spacing:.28em;text-transform:uppercase;opacity:.85}
+.title-tagline{font-size:clamp(13px,2.2vw,17px);color:var(--dim);font-style:italic;
+  max-width:520px;line-height:1.55;opacity:.8}
+.title-techsub{font-size:11px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;
+  opacity:.55;margin-top:-4px}
+.title-links{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.title-begin{margin-top:8px;padding:14px 40px;font-size:18px;
+  background:var(--gold);color:#1a1330;font-weight:700;
+  border:none;border-radius:8px;cursor:pointer;font-family:inherit;
+  letter-spacing:.12em;text-transform:uppercase;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  box-shadow:0 0 40px rgba(201,168,76,.35);min-height:50px}
+.title-begin:hover{background:var(--saffron);transform:scale(1.03);
+  box-shadow:0 0 60px rgba(232,163,61,.5)}
+.title-begin:focus-visible{outline:2px solid #fff;outline-offset:3px}
+
+/* ── ABOUT MODAL ── */
+#aboutModal{display:none;position:fixed;inset:0;z-index:30;
+  background:rgba(5,4,12,.72);
+  align-items:center;justify-content:center;padding:24px}
+#aboutModal.open{display:flex}
+.modal-inner{background:rgba(10,13,36,.94);border:1px solid rgba(201,168,76,.55);
+  border-radius:12px;max-width:580px;width:100%;padding:30px 32px 28px;
+  position:relative;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+@supports not (backdrop-filter:blur(1px)){
+  .modal-inner{background:rgba(10,13,36,.99)}
+}
+.modal-close{position:absolute;top:14px;right:16px;background:transparent;
+  border:1px solid rgba(201,168,76,.35);color:var(--gold);
+  width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.15s;font-family:inherit}
+.modal-close:hover{background:rgba(201,168,76,.18)}
+.modal-close:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.modal-title{color:var(--gold);letter-spacing:.16em;text-transform:uppercase;
+  font-size:16px;margin-bottom:14px}
+.modal-body{font-size:14px;line-height:1.72;color:var(--text);opacity:.88}
+.modal-links{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.modal-link{color:var(--gold);font-size:13px;text-decoration:none;
+  border-bottom:1px solid rgba(201,168,76,.3);padding-bottom:1px;
+  transition:border-color .15s,color .15s}
+.modal-link:hover{color:var(--saffron);border-color:var(--saffron)}
+.modal-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  #hud{flex-wrap:wrap;gap:8px;padding:8px 12px 10px}
+  #hTrust,#hDharma{display:none}
+  #hScene{font-size:11px}
+  #portraitWrap{top:44%}
+  #portrait{width:110px;height:110px;font-size:46px}
+  #portimg{width:130px;height:160px}
+  #panel{padding:12px 14px 16px;max-height:52%}
+  #line{font-size:16px}
+  .row{flex-direction:column;align-items:stretch}
+  .btn{width:100%;min-height:44px}
+  #say{width:100%;min-height:44px}
+}
+
+/* ── REDUCED MOTION ── */
+@media(prefers-reduced-motion:reduce){
+  #scene{animation:none}
+  #portrait,#portrait.intense,#portrait.grave,#portrait.amused{animation:none}
+  #moonGlow{animation:none}
+  #scene.bg-cremation #pyreLight,#scene.bg-climax #pyreLight{animation:none;opacity:.22}
+  #particles{display:none}
+  .load-glyph{animation:loadPulse 2.2s ease-in-out infinite}
+  #line.typing::after{animation:none;opacity:1}
+  .choice,.btn,.hud-pill-link,.title-begin{transition:none}
+}
 </style>
 </head>
 <body>
-  <div id="scene"><img id="bgimg" alt=""></div><div id="vignette"></div>
 
-  <div id="hud">
-    <span class="title">Katha · Vikram&nbsp;aur&nbsp;Betaal</span>
-    <span class="stat" id="hScene">—</span>
-    <span class="stat" id="hTrust">Trust 0</span>
-    <span class="stat" id="hDharma">Dharma 0</span>
-    <span class="grow"></span>
-    <select id="langSelect" style="background:#0d1230;color:var(--text);border:1px solid rgba(201,168,76,.4);border-radius:20px;padding:2px 10px;font-size:12px;margin-right:12px;cursor:pointer;outline:none;font-family:inherit;">
-      <option value="en">English</option>
-      <option value="hi">हिन्दी (Hindi)</option>
-    </select>
-    <span id="voice" title="Toggle voice — Sarvam AI (hi-IN) when key is set, browser speech otherwise">🔇 Voice</span>
+<!-- Layers, back to front -->
+<div id="scene">
+  <img id="bgimg" alt="">
+  <div id="moonGlow"></div>
+  <div id="groundHaze"></div>
+  <div id="pyreLight"></div>
+</div>
+<div id="grain"></div>
+<div id="vignette"></div>
+<canvas id="particles"></canvas>
+
+<!-- Loading overlay -->
+<div id="loadOverlay" role="status" aria-label="Loading">
+  <div class="load-glyph">☾</div>
+  <div class="load-text">Waking the storyteller…</div>
+  <div class="load-sub" id="loadSub">This is a free server — it may take a moment.</div>
+</div>
+
+<!-- Title screen -->
+<div id="titleScreen" aria-hidden="true">
+  <div class="title-ornament">❖ ☾ ❖</div>
+  <div class="title-wordmark">Katha</div>
+  <div class="title-sub1">Vikram aur Betaal</div>
+  <div class="title-tagline">A night of riddles between a king and the undying dead. Every secret has a witness. Not every witness will speak.</div>
+  <div class="title-techsub">multi-agent RAG · leak-proof knowledge isolation</div>
+  <div class="title-links">
+    <a class="hud-pill-link" href="https://github.com/arrya5/KATHA" target="_blank" rel="noopener">&lt;/&gt; Source</a>
+    <button class="hud-pill-link" id="aboutBtnTitle" aria-haspopup="dialog">ⓘ About</button>
   </div>
+  <button class="title-begin" id="beginBtn">Begin the Night</button>
+</div>
 
-  <div id="portraitWrap"><div><img id="portimg" alt=""><div id="portrait">ॐ</div><div id="expr"></div></div></div>
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-title-block">
+    <span class="title">Katha · Vikram&nbsp;aur&nbsp;Betaal</span>
+    <span class="hud-sub">multi-agent RAG · leak-proof knowledge isolation</span>
+  </div>
+  <span class="stat" id="hScene" style="font-size:11px">—</span>
+  <span class="stat" id="hTrust">Trust 0</span>
+  <span class="stat" id="hDharma">Dharma 0</span>
+  <span class="grow"></span>
+  <a class="hud-pill-link" href="https://github.com/arrya5/KATHA" target="_blank" rel="noopener">&lt;/&gt; Source</a>
+  <button class="hud-pill-link" id="aboutBtn" aria-haspopup="dialog">ⓘ About</button>
+  <select id="langSelect" style="background:#0d1230;color:var(--text);border:1px solid rgba(201,168,76,.4);border-radius:20px;padding:2px 10px;font-size:12px;cursor:pointer;outline:none;font-family:inherit;" aria-label="Language">
+    <option value="en">English</option>
+    <option value="hi">हिन्दी</option>
+  </select>
+  <span id="voice" role="button" tabindex="0" title="Toggle voice — Sarvam AI (hi-IN) when key is set, browser speech otherwise" aria-pressed="false">🔇 Voice</span>
+</div>
 
-  <div id="panel">
-    <div id="speaker">—</div>
-    <div id="line" title="click to skip the typewriter"></div>
-    <div id="ambient"></div>
-    <div id="controls">
-      <div class="choices" id="choices"></div>
-      <div class="row">
-        <input id="say" placeholder="Speak to them, or question a character by name…" />
-        <button class="btn" id="sendBtn">Speak</button>
-        <button class="btn" id="continueBtn">Continue ▸</button>
-        <button class="btn" id="nextBtn">Next scene ▸</button>
-        <select id="jump"></select>
-      </div>
+<!-- Portrait -->
+<div id="portraitWrap" aria-hidden="true">
+  <div>
+    <img id="portimg" alt="">
+    <div id="portrait" role="img" aria-label="Character portrait">ॐ</div>
+    <div id="expr"></div>
+  </div>
+</div>
+
+<!-- Panel -->
+<div id="panel" role="region" aria-label="Story dialogue">
+  <div id="speaker" aria-label="Current speaker">—</div>
+  <div id="line" aria-live="polite" tabindex="0" title="Click to skip the typewriter"></div>
+  <div id="ambient" aria-live="polite"></div>
+  <div id="controls">
+    <div class="choices" id="choices" role="group" aria-label="Story choices"></div>
+    <div class="row">
+      <input id="say" placeholder="Speak to them, or question a character by name…" aria-label="Your words" />
+      <button class="btn" id="sendBtn">Speak</button>
+      <button class="btn" id="continueBtn">Continue ▸</button>
+      <button class="btn" id="nextBtn">Next scene ▸</button>
+      <select id="jump" aria-label="Jump to scene"></select>
     </div>
   </div>
+</div>
 
-  <div id="ending"><h1 id="endTitle"></h1><p id="endText"></p>
-    <button class="btn primary" onclick="location.reload()">Walk the road again</button></div>
+<!-- Ending -->
+<div id="ending" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn primary" onclick="location.reload()">Walk the road again</button>
+</div>
+
+<!-- About modal -->
+<div id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutModalTitle">
+  <div class="modal-inner" id="aboutModalInner">
+    <button class="modal-close" id="aboutClose" aria-label="Close">✕</button>
+    <div class="modal-title" id="aboutModalTitle">About Katha</div>
+    <div class="modal-body">
+      Every character is an AI agent that can only retrieve facts it personally witnessed — secrecy enforced in the retrieval layer (the "witness gate"), not by prompting. A character literally cannot reveal what it did not see, however you phrase the question. Proven leak-proof by an automated eval: 0 leaks across a 28-probe adversarial set. Built on a 6-node multi-agent graph + 3-layer RAG, provider-swappable LLM, runs offline on a deterministic mock (optional Gemini for dynamic dialogue).
+    </div>
+    <div class="modal-links">
+      <a class="modal-link" href="https://github.com/arrya5/KATHA" target="_blank" rel="noopener">View the code on GitHub ↗</a>
+      <a class="modal-link" href="https://github.com/arrya5/KATHA/blob/main/docs/blog/leak-proof-agents.md" target="_blank" rel="noopener">Read the technical write-up ↗</a>
+    </div>
+  </div>
+</div>
 
 <script>
+/* ═══════════════════════════════════════════════
+   KATHA — single-file visual novel client
+   Preserves all API contracts from original.
+   ═══════════════════════════════════════════════ */
+
 const SID = "web-" + Math.random().toString(36).slice(2);
 let season = [], idx = 0, scene = "prologue", typing = null;
 let voiceOn = false, ttsEnabled = false, lastRender = null;
 let lang = localStorage.getItem("katha_lang") || "en";
+let _witnessNudgeDone = false;
+let _gameStarted = false;
+let _fetching = false;
 
-// Single shared AudioContext — never create more than one or old ones keep playing.
-let _actx = null;
-let _curSrc = null;   // the currently playing AudioBufferSourceNode
-let _ttsAbort = null; // AbortController for the in-flight /tts fetch
-let _speechId = 0;    // tracking for current voice sequence ID
+// Single shared AudioContext
+let _actx = null, _curSrc = null, _ttsAbort = null, _speechId = 0;
 
 function _getAudioContext(){
-  if(!_actx || _actx.state === 'closed'){
+  if(!_actx || _actx.state === 'closed')
     _actx = new (window.AudioContext||window.webkitAudioContext)();
-  }
-  // Resume if browser suspended it (autoplay policy)
   if(_actx.state === 'suspended') _actx.resume();
   return _actx;
 }
 
-// Browser-speech hints per voice_profile (free fallback when Sarvam isn't enabled).
 const VOICE = {
-  betaal_sonorous:{pitch:0.6,rate:0.86}, sutradhar:{pitch:0.8,rate:0.95},
-  king_regal:{pitch:0.9,rate:0.95}, m_unctuous:{pitch:1.05,rate:0.95},
-  f_grave:{pitch:0.9,rate:0.9}, f_soft:{pitch:1.0,rate:0.92}, m_child:{pitch:1.3,rate:1.0},
-  m_grave:{pitch:0.8,rate:0.9}, m_young:{pitch:1.15,rate:1.0}, m_broken:{pitch:0.8,rate:0.85},
+  betaal_sonorous:{pitch:.6,rate:.86}, sutradhar:{pitch:.8,rate:.95},
+  king_regal:{pitch:.9,rate:.95}, m_unctuous:{pitch:1.05,rate:.95},
+  f_grave:{pitch:.9,rate:.9}, f_soft:{pitch:1.0,rate:.92}, m_child:{pitch:1.3,rate:1.0},
+  m_grave:{pitch:.8,rate:.9}, m_young:{pitch:1.15,rate:1.0}, m_broken:{pitch:.8,rate:.85},
 };
 
 const $ = id => document.getElementById(id);
-const portraitGlyph = sp => ({Betaal:"☾",Narrator:"❖",Kshantishila:"⚯",Vikramaditya:"♛",
-  Madanasundari:"✿",Maiden:"✿"}[sp] || sp[0] || "•");
+const portraitGlyph = sp => ({
+  Betaal:"☾", Narrator:"❖", Kshantishila:"⚯", Vikramaditya:"♛",
+  Madanasundari:"✿", Maiden:"✿"
+}[sp] || sp[0] || "•");
 
 function bgClass(sceneId){
   if(sceneId.includes("prologue")) return "bg-court";
-  if(sceneId.includes("climax")) return "bg-climax";
+  if(sceneId.includes("climax"))   return "bg-climax";
   if(sceneId.includes("three-suitors")) return "bg-river";
   return "bg-cremation";
 }
 
+/* ── FETCH STATE / BUTTONS ── */
+function setFetching(on){
+  _fetching = on;
+  const btns = [$("sendBtn"), $("continueBtn"), $("nextBtn")];
+  btns.forEach(b => { if(b) b.disabled = on; });
+  if(on){
+    if($("sendBtn")) $("sendBtn").textContent = "…";
+    if($("continueBtn")) $("continueBtn").textContent = "…";
+  } else {
+    if($("sendBtn")) $("sendBtn").textContent = "Speak";
+    if($("continueBtn")) $("continueBtn").textContent = "Continue ▸";
+  }
+}
+
+/* ── TURN ── */
 async function turn(playerInput="", choiceId=null){
-  const r = await fetch("/turn",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({session_id:SID, player_input:playerInput, choice_id:choiceId, scene_id:scene, language:lang})});
-  render(await r.json());
+  if(_fetching) return;
+  setFetching(true);
+  try {
+    const r = await fetch("/turn",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        session_id:SID, player_input:playerInput,
+        choice_id:choiceId, scene_id:scene, language:lang
+      })
+    });
+    render(await r.json());
+  } finally {
+    setFetching(false);
+  }
 }
 
+/* ── TYPEWRITER ── */
+// Variable delays: longer after sentence-ending punctuation.
+const CHAR_DELAYS = {'.':55,'!':55,'?':55,',':28,';':28,'।':55};
 function typewriter(text){
-  clearInterval(typing); const el=$("line"); el.textContent=""; let i=0;
-  typing=setInterval(()=>{ el.textContent=text.slice(0,++i); el.scrollTop=el.scrollHeight;
-    if(i>=text.length) clearInterval(typing); }, 16);
-  el.onclick=()=>{ clearInterval(typing); el.textContent=text; };
+  clearInterval(typing);
+  const el = $("line");
+  el.textContent = "";
+  el.classList.add("typing");
+  let i = 0;
+  function step(){
+    if(i >= text.length){ el.classList.remove("typing"); typing = null; return; }
+    el.textContent = text.slice(0, ++i);
+    el.scrollTop = el.scrollHeight;
+    const ch = text[i-1];
+    const delay = CHAR_DELAYS[ch] || 16;
+    typing = setTimeout(step, delay);
+  }
+  typing = setTimeout(step, 10);
+  el.onclick = () => {
+    clearTimeout(typing); typing = null;
+    el.textContent = text;
+    el.classList.remove("typing");
+  };
 }
 
+/* ── SPEECH / VOICE ── */
 function stopSpeech(){
-  _speechId++; // Increment to cancel any running speak loops
-  // Cancel any in-flight Sarvam fetch so it can't play after we've moved on.
+  _speechId++;
   if(_ttsAbort){ _ttsAbort.abort(); _ttsAbort = null; }
-  // Stop the currently playing AudioBufferSourceNode.
   if(_curSrc){ try{ _curSrc.stop(); }catch(e){} _curSrc = null; }
-  // Stop browser fallback speech.
   if(window.speechSynthesis) window.speechSynthesis.cancel();
+  setVoiceActive(false);
+}
+
+function setVoiceActive(on){
+  const p = $("portrait"), panel = $("panel");
+  if(on){
+    p.classList.add("voice-active");
+    panel.classList.add("voice-active-panel");
+  } else {
+    p.classList.remove("voice-active");
+    panel.classList.remove("voice-active-panel");
+  }
 }
 
 function pickVoice(){
   const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  if (lang === "hi") {
-    return vs.find(v=>/hi-IN|hi/i.test(v.lang)) || vs.find(v=>/en-IN/i.test(v.lang)) || vs[0] || null;
-  } else {
-    return vs.find(v=>/en-IN/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
-  }
+  if(lang === "hi")
+    return vs.find(v=>/hi-IN|hi/i.test(v.lang)) || vs.find(v=>/en-IN/i.test(v.lang)) || vs[0]||null;
+  return vs.find(v=>/en-IN/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0]||null;
 }
 
-function fallbackBrowserSpeech(text) {
+function fallbackBrowserSpeech(text){
   const u = new SpeechSynthesisUtterance(text.replace(/[*"]/g,""));
   const p = VOICE[lastRender ? lastRender.voice_profile : ""] || {pitch:1,rate:1};
   u.pitch = p.pitch; u.rate = p.rate;
   const v = pickVoice(); if(v) u.voice = v;
+  u.onstart = () => setVoiceActive(true);
+  u.onend   = () => setVoiceActive(false);
+  u.onerror = () => setVoiceActive(false);
   window.speechSynthesis.speak(u);
 }
 
 async function speak(r){
   if(!voiceOn || !r || !r.line) return;
-  stopSpeech(); // cancels previous fetch + stops previous audio before starting anything new
-  
+  stopSpeech();
   const mySpeechId = _speechId;
   const sentences = r.line.split(/(?<=[.!?।])\s+/).filter(s => s.trim());
   if(sentences.length === 0) return;
 
-  if(ttsEnabled){ // Sarvam Bulbul v3 (production Indian voices)
+  if(ttsEnabled){
     try{
+      setVoiceActive(true);
       for(let i=0; i<sentences.length; i++){
         if(mySpeechId !== _speechId) return;
-        
         const textToSpeak = sentences[i];
         const abortCtrl = new AbortController();
         _ttsAbort = abortCtrl;
-        
         const res = await fetch("/tts",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({text:textToSpeak, voice_profile:r.voice_profile, language: (lang === "hi" ? "hi-IN" : "en-IN")}),
-          signal: abortCtrl.signal,
+          body:JSON.stringify({
+            text:textToSpeak, voice_profile:r.voice_profile,
+            language:(lang === "hi" ? "hi-IN" : "en-IN")
+          }),
+          signal:abortCtrl.signal,
         });
-        
         if(mySpeechId !== _speechId) return;
         const data = await res.json();
         if(mySpeechId !== _speechId) return;
-        
         if(data.audio){
           const raw = atob(data.audio);
           const buf = new Uint8Array(raw.length);
           for(let j=0;j<raw.length;j++) buf[j]=raw.charCodeAt(j);
           const actx = _getAudioContext();
           const decoded = await actx.decodeAudioData(buf.buffer);
-          
           if(mySpeechId !== _speechId) return;
-          
-          // Wait if previous sentence audio is still playing
           if(_curSrc){
             await new Promise(resolve => {
               const checkEnded = setInterval(() => {
-                if(!_curSrc || mySpeechId !== _speechId){
-                  clearInterval(checkEnded);
-                  resolve();
-                }
+                if(!_curSrc || mySpeechId !== _speechId){ clearInterval(checkEnded); resolve(); }
               }, 40);
-              _curSrc.addEventListener('ended', () => {
-                clearInterval(checkEnded);
-                resolve();
-              });
+              _curSrc.addEventListener('ended', () => { clearInterval(checkEnded); resolve(); });
             });
           }
-          
           if(mySpeechId !== _speechId) return;
-          
           const src = actx.createBufferSource();
           src.buffer = decoded;
           src.connect(actx.destination);
           src.start(0);
           _curSrc = src;
-          
-          src.onended = () => { if(_curSrc === src) _curSrc = null; };
+          src.onended = () => {
+            if(_curSrc === src){ _curSrc = null; }
+            if(i === sentences.length - 1) setVoiceActive(false);
+          };
         }
       }
       _ttsAbort = null;
-    }catch(e){
+    } catch(e){
       if(e.name === 'AbortError') return;
-      console.warn("Sarvam TTS failed, falling back to browser speech:", e);
-      if(mySpeechId === _speechId && window.speechSynthesis){
+      console.warn("Sarvam TTS failed, falling back:", e);
+      if(mySpeechId === _speechId && window.speechSynthesis)
         fallbackBrowserSpeech(r.line);
-      }
+      else setVoiceActive(false);
     }
   } else {
-    if(window.speechSynthesis){
-      fallbackBrowserSpeech(r.line);
-    }
+    if(window.speechSynthesis) fallbackBrowserSpeech(r.line);
   }
 }
 
-// Use real generated art if present (assets/), else fall back to the procedural look.
+/* ── ART (graceful fallback preserved) ── */
 function setArt(m, r){
   const bg = $("bgimg");
   if(m.background){
-    bg.onload = ()=>{ bg.style.opacity = 1; };
-    bg.onerror = ()=>{ bg.style.opacity = 0; };       // no file -> gradient shows through
+    bg.onload  = () => { bg.style.opacity = 1; };
+    bg.onerror = () => { bg.style.opacity = 0; };
     bg.src = "/assets/backgrounds/" + m.background + ".jpg";
   } else { bg.style.opacity = 0; }
 
   const pid = m.speaker_id, pi = $("portimg"), pc = $("portrait");
   if(!pid){ pi.style.display = "none"; pc.style.display = "flex"; return; }
   pi.dataset.fb = "";
-  pi.onload = ()=>{ pi.style.display = "block"; pc.style.display = "none"; };
-  pi.onerror = ()=>{
+  pi.onload  = () => { pi.style.display = "block"; pc.style.display = "none"; };
+  pi.onerror = () => {
     if(!pi.dataset.fb){ pi.dataset.fb = "1"; pi.src = "/assets/characters/" + pid + ".png"; }
-    else { pi.style.display = "none"; pc.style.display = "flex"; }   // no art -> glyph
+    else { pi.style.display = "none"; pc.style.display = "flex"; }
   };
   pi.src = "/assets/characters/" + pid + "_" + (r.expression || "neutral") + ".png";
 }
 
+/* ── SPEAKER SIGIL COLORS ── */
+function speakerClass(speaker){
+  const s = (speaker||"").toLowerCase();
+  if(s.includes("betaal"))       return "spk-betaal";
+  if(s.includes("vikramaditya")) return "spk-vikramaditya";
+  if(s.includes("narrator"))     return "spk-narrator";
+  return "";
+}
+
+/* ── WITNESS NUDGE ── */
+function maybeShowWitnessNudge(){
+  if(_witnessNudgeDone) return;
+  _witnessNudgeDone = true;
+  const amb = $("ambient");
+  const saved = amb.textContent;
+  amb.style.opacity = "0";
+  setTimeout(() => {
+    amb.textContent = "❧ Each soul recalls only what it witnessed. Question one who was absent — and watch them fail to lie.";
+    amb.style.opacity = "1";
+  }, 400);
+  // Let ambient overwrite after 8s
+  setTimeout(() => {
+    if(lastRender && lastRender.ambient)
+      amb.textContent = "❧ " + lastRender.ambient;
+    else
+      amb.textContent = "";
+  }, 8000);
+}
+
+/* ── RENDER ── */
+let _beatCount = 0;
 function render(r){
   lastRender = r;
   $("scene").className = bgClass(r.scene_id);
   $("speaker").textContent = r.speaker;
-  $("portrait").textContent = portraitGlyph(r.speaker);
-  $("portrait").className = r.expression||"";
-  $("expr").textContent = r.expression||"";
+
+  const port = $("portrait");
+  port.textContent = portraitGlyph(r.speaker);
+  // Expression class + speaker sigil class
+  const sigil = speakerClass(r.speaker);
+  port.className = [r.expression || "", sigil].filter(Boolean).join(" ");
+  $("expr").textContent = r.expression || "";
   $("ambient").textContent = r.ambient ? "❧ " + r.ambient : "";
+
   setArt(r.meta || {}, r);
   typewriter(r.line);
   speak(r);
 
-  const m=r.meta||{};
-  $("hTrust").textContent = "Trust " + (m.trust??0);
+  const m = r.meta || {};
+  $("hTrust").textContent  = "Trust " + (m.trust??0);
   $("hDharma").textContent = "Dharma " + (m.dharma??0);
-  $("hScene").textContent = (season[idx]?season[idx].title:scene);
+  $("hScene").textContent  = season[idx] ? season[idx].title : scene;
 
-  const box=$("choices"); box.innerHTML="";
-  (r.choices||[]).forEach(c=>{
-    const b=document.createElement("button"); b.className="choice"; b.textContent=c.label;
-    b.onclick=()=>turn("", c.id); box.appendChild(b);
+  const box = $("choices"); box.innerHTML = "";
+  (r.choices||[]).forEach(c => {
+    const b = document.createElement("button");
+    b.className = "choice"; b.textContent = c.label;
+    b.onclick = () => turn("", c.id);
+    box.appendChild(b);
   });
 
-  if(m.advance_to){ // prologue -> tale 1
-    const b=document.createElement("button"); b.className="choice";
-    b.textContent="▸ Take up the corpse and walk on…";
-    b.onclick=()=>{ scene=m.advance_to; idx=season.findIndex(s=>s.id===scene); $("jump").value=scene; turn("begin"); };
+  if(m.advance_to){
+    const b = document.createElement("button"); b.className = "choice";
+    b.textContent = "▸ Take up the corpse and walk on…";
+    b.onclick = () => {
+      scene = m.advance_to;
+      idx = season.findIndex(s => s.id === scene);
+      $("jump").value = scene;
+      turn("begin");
+    };
     box.appendChild(b);
   }
-  if(m.season_complete){ endScreen(m.outcome); }
+
+  _beatCount++;
+  // Show witness nudge once after first beat completes
+  if(_beatCount === 1) setTimeout(maybeShowWitnessNudge, 2200);
+
+  if(m.season_complete) endScreen(m.outcome);
 }
 
+/* ── ENDING ── */
 function endScreen(outcome){
-  const titles={king_triumphant:"Emperor of the Age",just_but_empty:"Just, and Empty-Handed",
-    narrow_escape:"A Narrow Escape"};
-  $("endTitle").textContent = titles[outcome]||"The Road Ends";
-  $("endText").textContent = $("line").textContent;
-  $("ending").style.display="flex";
+  const titles = {
+    king_triumphant:"Emperor of the Age",
+    just_but_empty:"Just, and Empty-Handed",
+    narrow_escape:"A Narrow Escape"
+  };
+  $("endTitle").textContent = titles[outcome] || "The Road Ends";
+  $("endText").textContent  = $("line").textContent;
+  $("ending").style.display = "flex";
 }
 
+/* ── NEXT SCENE ── */
 function nextScene(){
-  if(idx < season.length-1){ idx++; scene=season[idx].id; $("jump").value=scene; turn("begin"); }
+  if(idx < season.length-1){
+    idx++; scene = season[idx].id;
+    $("jump").value = scene;
+    turn("begin");
+  }
 }
 
+/* ── ABOUT MODAL ── */
+function openAbout(){
+  $("aboutModal").classList.add("open");
+  $("aboutClose").focus();
+  document.addEventListener("keydown", onAboutKey);
+}
+function closeAbout(){
+  $("aboutModal").classList.remove("open");
+  document.removeEventListener("keydown", onAboutKey);
+}
+function onAboutKey(e){
+  if(e.key === "Escape") closeAbout();
+}
+$("aboutBtn").onclick = openAbout;
+$("aboutBtnTitle").onclick = openAbout;
+$("aboutClose").onclick = closeAbout;
+$("aboutModal").onclick = e => { if(e.target === $("aboutModal")) closeAbout(); };
+
+/* ── PARTICLES ── */
+(function initParticles(){
+  if(window.matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const canvas = $("particles");
+  const ctx = canvas.getContext("2d");
+  const small = window.innerWidth < 480 || (navigator.hardwareConcurrency||4) <= 4;
+  const N = small ? 22 : 45;
+  let W, H, particles;
+
+  function resize(){
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  function mkParticle(){
+    return {
+      x: Math.random() * W,
+      y: H + Math.random() * 80,
+      vx: (Math.random() - .5) * .35,
+      vy: -(0.28 + Math.random() * 0.52),
+      life: 0,
+      maxLife: 180 + Math.random() * 220,
+      size: .8 + Math.random() * 2.2,
+      hue: 38 + (Math.random() - .5) * 18,
+    };
+  }
+  particles = Array.from({length:N}, () => {
+    const p = mkParticle();
+    p.y = Math.random() * H; // spread initially
+    p.life = Math.random() * p.maxLife;
+    return p;
+  });
+
+  let raf;
+  function frame(){
+    ctx.clearRect(0, 0, W, H);
+    for(const p of particles){
+      p.life++;
+      if(p.life > p.maxLife){ Object.assign(p, mkParticle()); continue; }
+      const t = p.life / p.maxLife;
+      const alpha = t < .15 ? t/.15 : t > .75 ? (1-t)/.25 : 1;
+      p.x += p.vx + Math.sin(p.life * .045) * .22;
+      p.y += p.vy;
+      ctx.save();
+      ctx.globalAlpha = alpha * .62;
+      ctx.fillStyle = `hsl(${p.hue},78%,64%)`;
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = `hsl(${p.hue},90%,75%)`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+/* ── INIT ── */
 async function init(){
+  // Show loading sub after 10s
+  const subTimer = setTimeout(() => {
+    $("loadSub").classList.add("show");
+  }, 10000);
+
   const s = await (await fetch("/season")).json();
+  clearTimeout(subTimer);
   season = s.order;
   ttsEnabled = !!s.tts_enabled;
-  if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged = pickVoice; // warm voice list
-  const sel=$("jump"); season.forEach((t,i)=>{ const o=document.createElement("option");
-    o.value=t.id; o.textContent=(i+1)+". "+t.title; sel.appendChild(o); });
-  sel.onchange=()=>{ scene=sel.value; idx=season.findIndex(s=>s.id===scene); turn("begin"); };
-  $("sendBtn").onclick=()=>{ const v=$("say").value.trim(); if(v){ $("say").value=""; turn(v); } };
-  $("say").addEventListener("keydown",e=>{ if(e.key==="Enter") $("sendBtn").click(); });
-  $("continueBtn").onclick=()=>turn("continue");
-  $("nextBtn").onclick=nextScene;
+
+  // Dismiss loading overlay
+  const lo = $("loadOverlay");
+  lo.classList.add("hidden");
+  setTimeout(() => lo.style.display = "none", 900);
+
+  // Show title screen
+  const ts = $("titleScreen");
+  ts.removeAttribute("aria-hidden");
+
+  if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged = pickVoice;
+
+  // Populate jump select
+  const sel = $("jump");
+  season.forEach((t,i) => {
+    const o = document.createElement("option");
+    o.value = t.id; o.textContent = (i+1) + ". " + t.title;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => {
+    scene = sel.value;
+    idx = season.findIndex(s => s.id === scene);
+    turn("begin");
+  };
+
+  $("sendBtn").onclick = () => {
+    const v = $("say").value.trim();
+    if(v){ $("say").value = ""; turn(v); }
+  };
+  $("say").addEventListener("keydown", e => { if(e.key === "Enter") $("sendBtn").click(); });
+  $("continueBtn").onclick = () => turn("continue");
+  $("nextBtn").onclick     = nextScene;
 
   const langSel = $("langSelect");
   langSel.value = lang;
@@ -346,17 +841,31 @@ async function init(){
     turn("__refresh__");
   };
 
-  $("voice").onclick=()=>{
+  const voiceEl = $("voice");
+  voiceEl.onclick = () => {
     voiceOn = !voiceOn;
-    const label = voiceOn ? (ttsEnabled ? "🔊 Sarvam" : "🔊 Browser") : "🔇 Voice";
-    $("voice").textContent = label;
-    $("voice").title = voiceOn
+    voiceEl.textContent = voiceOn ? (ttsEnabled ? "🔊 Sarvam" : "🔊 Browser") : "🔇 Voice";
+    voiceEl.title = voiceOn
       ? (ttsEnabled ? "Sarvam AI Bulbul v3 — Indian voices active" : "Browser speech active (set SARVAM_API_KEY for Indian voices)")
       : "Voice off";
+    voiceEl.setAttribute("aria-pressed", voiceOn ? "true" : "false");
     if(voiceOn){ speak(lastRender); } else { stopSpeech(); }
   };
-  turn("begin"); // opens on the prologue
+  voiceEl.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); voiceEl.click(); }});
+
+  // Begin button starts the game
+  $("beginBtn").onclick = async () => {
+    if(_gameStarted) return;
+    _gameStarted = true;
+    // Fade title screen
+    const ts = $("titleScreen");
+    ts.style.opacity = "0";
+    ts.setAttribute("aria-hidden", "true");
+    setTimeout(() => ts.style.display = "none", 900);
+    await turn("begin");
+  };
 }
+
 init();
 </script>
 </body>

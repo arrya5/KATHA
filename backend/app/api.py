@@ -47,6 +47,7 @@ class TurnIn(BaseModel):
     language: str = "en"
     scene_id: str = ""
     choice_id: str | None = None
+    player_id: str = ""
 
 
 class ChoiceOut(BaseModel):
@@ -96,6 +97,7 @@ def turn(body: TurnIn) -> TurnOut:
     render = run_turn(TurnRequest(
         session_id=body.session_id, player_input=body.player_input,
         language=body.language, scene_id=body.scene_id, choice_id=body.choice_id,
+        player_id=body.player_id,
     ))
     return TurnOut(
         scene_id=render.scene_id, speaker=render.speaker, line=render.line,

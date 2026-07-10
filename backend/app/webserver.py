@@ -81,6 +81,7 @@ class Handler(BaseHTTPRequestHandler):
                 language=body.get("language", "en"),
                 scene_id=body.get("scene_id", ""),
                 choice_id=body.get("choice_id"),
+                player_id=body.get("player_id", ""),
             ))
             self._json(_render_to_dict(render))
         elif self.path == "/tts":

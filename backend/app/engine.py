@@ -8,6 +8,7 @@ import logging
 import threading
 import time
 
+from . import analytics
 from . import content  # noqa: F401  (import side-effect: loads canon into the vector store)
 from .agents.graph import run_graph
 from .agents.nodes import Deps
@@ -50,6 +51,12 @@ def run_turn(request: TurnRequest) -> SceneRender:
 
         s = store.get(request.session_id)
 
+        # First contact for this session (any turn type) -> one session_start event.
+        if analytics.first_seen(request.session_id):
+            analytics.emit("session_start", session_id=request.session_id,
+                           player_id=request.player_id, tale_id=s.scene.tale_id,
+                           turn_no=s.turn_no, language=request.language or "en")
+
         if request.player_input == "__refresh__":
             from .agents.nodes import refresh_render
             render = refresh_render(request.session_id, request.language or "en", get_provider())
@@ -66,6 +73,9 @@ def run_turn(request: TurnRequest) -> SceneRender:
             scene = s.scene
             if scene.tale_id != request.scene_id:
                 s.scene = SceneRuntime(tale_id=request.scene_id)
+                analytics.emit("tale_start", session_id=request.session_id,
+                               player_id=request.player_id, tale_id=request.scene_id,
+                               turn_no=s.turn_no, language=request.language or "en")
 
         state = TurnState(request=request, scene_id=request.scene_id)
         deps = Deps(provider=get_provider(), knowledge=knowledge_engine)
@@ -80,6 +90,26 @@ def run_turn(request: TurnRequest) -> SceneRender:
 
         ms = int((time.perf_counter() - t0) * 1000)
         m = state.render.meta
+
+        # --- Telemetry (best-effort; never blocks or fails the turn) ---------
+        analytics.emit(
+            "turn", session_id=request.session_id, player_id=request.player_id,
+            tale_id=s.scene.tale_id, turn_no=s.turn_no,
+            intent=m.get("intent"), choice_id=request.choice_id,
+            fallback=state.render.fallback_used, dharma=s.dharma_score,
+            strikes=s.strikes, language=request.language or "en",
+            scene=request.scene_id or m.get("background"), latency_ms=ms,
+        )
+        if m.get("advance_to"):
+            analytics.emit("tale_complete", session_id=request.session_id,
+                           player_id=request.player_id, tale_id=s.scene.tale_id,
+                           turn_no=s.turn_no, next_tale=m.get("advance_to"))
+        if m.get("season_complete"):
+            analytics.emit("season_complete", session_id=request.session_id,
+                           player_id=request.player_id, tale_id=s.scene.tale_id,
+                           turn_no=s.turn_no, outcome=m.get("outcome"),
+                           climax_tier=m.get("climax_tier"))
+
         log.info("turn sid=%s scene=%s intent=%s fallback=%s %dms",
                  request.session_id, request.scene_id or m.get("background", "-"),
                  m.get("intent", "-"), state.render.fallback_used, ms)

@@ -91,6 +91,16 @@ class Settings:
     # default: in-memory session store. Set DATABASE_URL for SQLite/Postgres later.
     database_url: str = field(default_factory=lambda: _get("DATABASE_URL", ""))
 
+    # --- Analytics (best-effort player telemetry) ----------------------------
+    # KATHA_ANALYTICS=0 disables entirely. Backend is picked automatically:
+    #   Supabase (SUPABASE_URL + SUPABASE_SERVICE_KEY) -> durable, survives HF restarts
+    #   else local SQLite if KATHA_ANALYTICS_DB is set -> dev/offline capture
+    #   else no-op (nothing is written)
+    analytics_enabled: bool = field(default_factory=lambda: _get("KATHA_ANALYTICS", "1") != "0")
+    supabase_url: str = field(default_factory=lambda: _get("SUPABASE_URL", ""))
+    supabase_service_key: str = field(default_factory=lambda: _get("SUPABASE_SERVICE_KEY", ""))
+    analytics_db: str = field(default_factory=lambda: _get("KATHA_ANALYTICS_DB", ""))
+
     # --- Gameplay tuning -----------------------------------------------------
     canon_top_k: int = 5
     memory_top_k: int = 5

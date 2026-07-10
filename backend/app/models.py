@@ -107,6 +107,7 @@ class TurnRequest:
     language: str = "en"
     scene_id: str = ""
     choice_id: Optional[str] = None   # set when the player taps a choice button
+    player_id: str = ""               # stable per-browser id (localStorage) for retention/analytics
 
 
 @dataclass

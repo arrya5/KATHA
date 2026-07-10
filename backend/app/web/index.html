@@ -390,6 +390,17 @@ select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
    ═══════════════════════════════════════════════ */
 
 const SID = "web-" + Math.random().toString(36).slice(2);
+// Stable per-browser id: persists across reloads so returning players are recognizable
+// (retention). SID is per page-load (one playthrough); PID is per person/device.
+const PID = (() => {
+  let p = localStorage.getItem("katha_pid");
+  if(!p){
+    p = (crypto.randomUUID ? crypto.randomUUID()
+                           : "pid-" + Date.now().toString(36) + Math.random().toString(36).slice(2));
+    localStorage.setItem("katha_pid", p);
+  }
+  return p;
+})();
 let season = [], idx = 0, scene = "prologue", typing = null;
 let voiceOn = false, ttsEnabled = false, lastRender = null;
 let lang = localStorage.getItem("katha_lang") || "en";
@@ -450,7 +461,7 @@ async function turn(playerInput="", choiceId=null){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        session_id:SID, player_input:playerInput,
+        session_id:SID, player_id:PID, player_input:playerInput,
         choice_id:choiceId, scene_id:scene, language:lang
       })
     });

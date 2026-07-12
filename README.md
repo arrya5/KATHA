@@ -79,7 +79,9 @@ flowchart LR
 
 Runs on a stdlib runner (zero extra installs) or LangGraph (`KATHA_ORCHESTRATOR=langgraph`) — same node functions, swappable wiring.
 
-### The witness gate (knowledge isolation)
+---
+
+## The witness gate (knowledge isolation)
 
 ```mermaid
 flowchart TD
@@ -96,10 +98,6 @@ flowchart TD
     Miss --> NPC["NPC response:<br/>'I did not witness that.'"]
     Hit --> Teller["Betaal response:<br/>correct, grounded answer"]
 ```
-
----
-
-## The witness gate (knowledge isolation)
 
 The engine uses three retrieval layers:
 

@@ -13,7 +13,7 @@ from ..models import (Choice, Intent, NpcDraft, SceneRender, TurnState, Verdict,
 from ..store import store
 from ..moderation.classifier import classify_input
 from ..moderation.validator import validate_output, FALLBACK_LINE
-from ..content.tales import TALES, DEFAULT_TALE
+from ..content.tales import TALES, DEFAULT_TALE, SEASON_ORDER
 from ..content.betaal_prompt import BETAAL_SYSTEM
 from ..config import settings
 try:
@@ -287,6 +287,16 @@ def agent_node(state: TurnState, deps: Deps) -> TurnState:
             else:
                 scene.judged = True
                 state.dharma_delta = 2 if choice == tale.get("canonical") else (1 if choice == "C" else 0)
+                # Once the riddle is judged, offer passage to the next scene so the
+                # "walk on" button carries the player through every tale (not just the
+                # prologue). Prefer an explicit advance_to; else follow the season order.
+                nxt = tale.get("advance_to")
+                if not nxt and tale["id"] in SEASON_ORDER:
+                    i = SEASON_ORDER.index(tale["id"])
+                    if i + 1 < len(SEASON_ORDER):
+                        nxt = SEASON_ORDER[i + 1]
+                if nxt:
+                    state.retrieval["advance_to"] = nxt
                 state.draft = NpcDraft(
                     npc_id="betaal", line=_authored(reaction["line"]),
                     expression=reaction["expression"], trust_delta=reaction["trust_delta"],

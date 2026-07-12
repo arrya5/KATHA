@@ -132,6 +132,21 @@ Running `python -m app.eval_leak` probes the full adversarial set:
 
 ---
 
+## What runs offline vs. what a key adds
+
+A fair question for any "runs offline" AI project: *if there's no LLM, what is actually running?* The honest answer — **the mock provider replaces exactly one thing, final dialogue generation. The architecture runs identically with or without a key.**
+
+| Component | Offline (mock, default) | With a key / local model |
+|---|---|---|
+| 6-node agent graph, rule-based router, world-state, validator | ✅ Runs for real | ✅ Identical |
+| 3-layer retrieval + **witness-gated knowledge isolation** | ✅ Runs for real — the leak-proof guarantee | ✅ Identical |
+| Retrieval similarity | Lexical (token-overlap), zero-dependency | Dense-vector via Ollama embeddings, or Chroma / Pinecone |
+| Dialogue text | Authored line returned verbatim (deterministic, testable) | Generated in-character from the bounded context |
+
+The split is deliberate: **the knowledge-isolation guarantee is enforced in code, so it holds regardless of whether — or how well — the LLM behaves.** `app.eval_leak` proves 0 leaks against the mock; setting `KATHA_LLM_PROVIDER=gemini` (or `ollama`, free and local) feeds the *same* witness-filtered context into live generation. What changes is prose quality, not the invariant. That is the point of moving the boundary into the retrieval layer rather than the prompt.
+
+---
+
 ## Tech stack
 
 | Layer | Choice |
@@ -142,8 +157,10 @@ Running `python -m app.eval_leak` probes the full adversarial set:
 | LLM providers | Mock (offline, deterministic, zero keys) / Ollama (local) / Gemini (cloud) — provider-swappable via one env var |
 | Moderation | 3-layer: input classifier → output validator → authored-fallback safety net |
 | Persistence | In-memory (default) / SQLite (`DATABASE_URL=sqlite:///katha.db`) |
+| Analytics | Best-effort telemetry → Supabase (Postgres via PostgREST, stdlib `urllib` only) / SQLite fallback; `app.stats` CLI |
 | Client | Browser (stdlib HTTP + `web/index.html`) / Expo + React Native (mobile) |
 | Voice | Sarvam TTS (key-gated, plug-and-play); browser TTS fallback offline |
+| Deploy | Dockerized Hugging Face Space; one-command redeploy (`scripts/deploy_hf.sh`) |
 
 ---
 
@@ -156,6 +173,23 @@ Running `python -m app.eval_leak` probes the full adversarial set:
 | `python -m app.eval_leak` | Adversarial probe suite (28 probes) — systematically attempts to extract secrets through every NPC; reports leak count and exits 0 if 0 leaks (currently 28/28 withheld, 0 leaks) |
 
 All three run offline with the mock LLM provider. The eval suite is the canonical proof of the knowledge-isolation guarantee.
+
+---
+
+## Analytics (player telemetry)
+
+Real usage is measured, not guessed — via a best-effort telemetry pipeline that records how people actually play without ever slowing or breaking a turn:
+
+- **Never blocks or breaks a turn.** Events drop onto a bounded in-memory queue and flush on a daemon thread; every failure (network, disk, bad config) is swallowed and logged at DEBUG. A dead analytics backend is invisible to the player.
+- **Durable, zero new dependencies.** Writes to Supabase (Postgres) over its PostgREST REST endpoint using only stdlib `urllib` — matching the project's zero-install ethos. Falls back to local SQLite for offline dev, or no-ops entirely when unconfigured.
+- **Derived metrics, never hand-maintained.** `python -m app.stats` turns the append-only event log into unique / returning players, session funnel, per-tale completion rate, median turns per session, and intent mix.
+
+Five event types (`session_start`, `tale_start`, `turn`, `tale_complete`, `season_complete`) carry a stable per-person `player_id` (browser `localStorage`), so returning-player retention is measurable — distinct from a per-page-load session id. Credentials live only in environment variables / Hugging Face Space secrets, never in the repo or client.
+
+```bash
+python -m app.stats          # human-readable summary
+python -m app.stats --json   # machine-readable (dashboard / badge)
+```
 
 ---
 

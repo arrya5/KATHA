@@ -30,11 +30,17 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo ">> Cloning Space $SPACE ..."
-git clone --quiet "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${SPACE}" "$TMP"
+# credential.helper= disables Git Credential Manager (the token is already in the URL);
+# without this, GCM writes system-commandline-sentinel-files that collide with checkout.
+git -c credential.helper= clone --quiet \
+    "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${SPACE}" "$TMP"
 
 echo ">> Syncing app code from local HEAD ..."
 rm -rf "$TMP/backend"
 git -C "$REPO_ROOT" archive HEAD backend Dockerfile requirements-demo.txt | tar -x -C "$TMP"
+
+# Prune cache/tool cruft that was accidentally committed to the Space repo.
+rm -rf "$TMP/system-commandline-sentinel-files" "$TMP/.pytest_cache" "$TMP/.ruff_cache"
 
 cd "$TMP"
 git add -A
@@ -45,5 +51,5 @@ fi
 REV="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 git -c user.email="deploy@katha.local" -c user.name="Katha Deploy" \
     commit --quiet -m "Deploy from GitHub main @ ${REV}"
-git push --quiet origin HEAD:main
+git -c credential.helper= push --quiet origin HEAD:main
 echo ">> Deployed @ ${REV}. Space is rebuilding -> https://arrya5-katha.hf.space/"

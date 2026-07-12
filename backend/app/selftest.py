@@ -7,7 +7,12 @@ that makes Katha feel alive; they must pass 100%.
 """
 from __future__ import annotations
 
+import os
 import sys
+
+# Self-tests drive real turns; never let them write telemetry to a configured
+# (production) analytics backend. Must be set before any app module imports settings.
+os.environ.setdefault("KATHA_ANALYTICS", "0")
 
 from .engine import run_turn
 from .models import Intent, TurnRequest, WorldEvent
